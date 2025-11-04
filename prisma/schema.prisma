@@ -24,47 +24,15 @@ model User {
 model Consent {
   id        String   @id @default(cuid())
   userId    String   @unique
-  status    ConsentStatus
+  status    String   // OPTED_IN | OPTED_OUT
   timestamp DateTime @default(now())
   User      User     @relation(fields: [userId], references: [id])
-}
-
-enum ConsentStatus {
-  OPTED_IN
-  OPTED_OUT
-}
-
-enum AccountType {
-  checking
-  savings
-  credit
-  money_market
-  hsa
-}
-
-enum Channel {
-  online
-  in_store
-  atm
-  other
-}
-
-enum PFCPrimary {
-  income
-  transfer
-  subscription
-  groceries
-  dining
-  bills
-  entertainment
-  travel
-  other
 }
 
 model Account {
   id              String      @id @default(cuid())
   userId          String
-  type            AccountType
+  type            String      // checking | savings | credit | money_market | hsa
   subtype         String
   numberMasked    String
   isoCurrencyCode String
@@ -84,25 +52,19 @@ model Transaction {
   amount      Float      // negative = outflow, positive = inflow
   merchant    String?
   merchantEntityId String?
-  paymentChannel Channel
-  pfcPrimary   PFCPrimary
+  paymentChannel String  // online | in_store | atm | other
+  pfcPrimary   String    // income | transfer | subscription | groceries | dining | bills | entertainment | travel | other
   pfcDetailed  String?
   pending      Boolean    @default(false)
   Account      Account    @relation(fields: [accountId], references: [id])
   User         User       @relation(fields: [userId], references: [id])
 }
 
-enum LiabilityType {
-  credit_card
-  mortgage
-  student_loan
-}
-
 model Liability {
   id           String       @id @default(cuid())
   userId       String
   accountId    String?
-  type         LiabilityType
+  type         String       // credit_card | mortgage | student_loan
   aprType      String?
   aprPercent   Float?
   minPayment   Float?
@@ -139,17 +101,11 @@ model Profile {
   reviewItems       ReviewItem[]
 }
 
-enum ReviewStatus {
-  pending
-  approved
-  overridden
-}
-
 model ReviewItem {
   id         String       @id @default(cuid())
   userId     String
   profileId  String
-  status     ReviewStatus @default(pending)
+  status     String       @default("pending")  // pending | approved | overridden
   reason     String       // e.g., "persona_change", "aml_alerts"
   notes      String?
   decidedAt  DateTime?
@@ -176,4 +132,3 @@ model AmlLabel {
 
   @@index([userId])
 }
-
