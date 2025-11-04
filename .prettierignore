@@ -1,0 +1,14 @@
+node_modules
+.next
+.cache
+out
+dist
+build
+coverage
+*.db
+*.db-journal
+eval/out
+.env
+.env.local
+package-lock.json
+
