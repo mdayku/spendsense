@@ -10,7 +10,9 @@
     "allowSyntheticDefaultImports": true,
     "forceConsistentCasingInFileNames": true,
     "baseUrl": ".",
-    "paths": { "@/lib/*": ["src/lib/*"] },
+    "paths": {
+      "@/*": ["src/*"]
+    },
     "jsx": "preserve",
     "noEmit": true,
     "incremental": true,
