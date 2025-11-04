@@ -1,0 +1,147 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String   @id @default(cuid())
+  name          String
+  email         String   @unique
+  consent       Consent?
+  accounts      Account[]
+  transactions  Transaction[]
+  liabilities   Liability[]
+  profiles      Profile[]
+  reviewItems   ReviewItem[]
+  amlLabels     AmlLabel[]
+  createdAt     DateTime @default(now())
+}
+
+model Consent {
+  id        String   @id @default(cuid())
+  userId    String   @unique
+  status    ConsentStatus
+  timestamp DateTime @default(now())
+  User      User     @relation(fields: [userId], references: [id])
+}
+
+enum ConsentStatus { OPTED_IN OPTED_OUT }
+
+enum AccountType { checking savings credit money_market hsa }
+
+enum Channel { online in_store atm other }
+
+enum PFCPrimary { income transfer subscription groceries dining bills entertainment travel other }
+
+model Account {
+  id              String      @id @default(cuid())
+  userId          String
+  type            AccountType
+  subtype         String
+  numberMasked    String
+  isoCurrencyCode String
+  balanceAvailable Float?
+  balanceCurrent  Float
+  creditLimit     Float?
+  User            User        @relation(fields: [userId], references: [id])
+  transactions    Transaction[]
+  liabilities     Liability[]
+}
+
+model Transaction {
+  id          String     @id @default(cuid())
+  userId      String
+  accountId   String
+  date        DateTime
+  amount      Float      // negative = outflow, positive = inflow
+  merchant    String?
+  merchantEntityId String?
+  paymentChannel Channel
+  pfcPrimary   PFCPrimary
+  pfcDetailed  String?
+  pending      Boolean    @default(false)
+  Account      Account    @relation(fields: [accountId], references: [id])
+  User         User       @relation(fields: [userId], references: [id])
+}
+
+enum LiabilityType { credit_card mortgage student_loan }
+
+model Liability {
+  id           String       @id @default(cuid())
+  userId       String
+  accountId    String?
+  type         LiabilityType
+  aprType      String?
+  aprPercent   Float?
+  minPayment   Float?
+  lastPayment  Float?
+  isOverdue    Boolean? @default(false)
+  nextDueDate  DateTime?
+  lastStmtBal  Float?
+  interestRate Float?
+  User         User        @relation(fields: [userId], references: [id])
+  Account      Account?    @relation(fields: [accountId], references: [id])
+}
+
+model Profile {
+  id            String   @id @default(cuid())
+  userId        String
+  windowDays    Int
+  subscriptionCount Int
+  monthlyRecurring  Float
+  subscriptionShare Float
+  netSavingsInflow  Float
+  savingsGrowthRate Float
+  emergencyMonths   Float
+  utilMax           Float
+  utilFlags         String
+  minPayOnly        Boolean
+  interestCharges   Boolean
+  overdue           Boolean
+  incomeMedianGap   Int
+  cashBufferMonths  Float
+  persona           String
+  decisionTrace     String
+  createdAt         DateTime @default(now())
+  User              User     @relation(fields: [userId], references: [id])
+  reviewItems       ReviewItem[]
+}
+
+enum ReviewStatus { pending approved overridden }
+
+model ReviewItem {
+  id         String       @id @default(cuid())
+  userId     String
+  profileId  String
+  status     ReviewStatus @default(pending)
+  reason     String       // e.g., "persona_change", "aml_alerts"
+  notes      String?
+  decidedAt  DateTime?
+  createdAt  DateTime     @default(now())
+
+  User    User    @relation(fields: [userId], references: [id])
+  Profile Profile @relation(fields: [profileId], references: [id])
+
+  @@index([status, createdAt])
+  @@index([userId])
+}
+
+model AmlLabel {
+  id        String   @id @default(cuid())
+  userId    String
+  extTxId   String?
+  label     Boolean  // true = laundering in source label
+  amount    Float?
+  counterparty String?
+  date      DateTime?
+  createdAt DateTime @default(now())
+
+  User      User     @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+}
+

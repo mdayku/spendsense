@@ -1,0 +1,17 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ES2022", "DOM"],
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "strict": true,
+    "baseUrl": ".",
+    "paths": { "@/lib/*": ["src/lib/*"] },
+    "jsx": "preserve",
+    "noEmit": true,
+    "types": ["vitest/globals"]
+  },
+  "include": ["src", "scripts", "eval", "tests", "next-env.d.ts"],
+  "exclude": ["node_modules"]
+}
+
