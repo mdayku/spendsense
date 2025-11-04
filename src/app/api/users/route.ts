@@ -6,7 +6,7 @@ export async function GET(req: NextRequest) {
   const q = url.searchParams.get("q")?.toLowerCase() || "";
   const users = await prisma.user.findMany({
     take: 50,
-    where: q ? { OR: [ { name: { contains: q, mode: "insensitive" } }, { email: { contains: q, mode: "insensitive" } } ] } : undefined,
+    where: q ? { OR: [ { name: { contains: q } }, { email: { contains: q } } ] } : undefined,
     orderBy: { createdAt: "desc" },
   });
   return NextResponse.json({ users });
