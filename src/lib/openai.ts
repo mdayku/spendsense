@@ -1,8 +1,18 @@
 import OpenAI from "openai";
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
+let openai: OpenAI | null = null;
+
+function getOpenAIClient(): OpenAI | null {
+  if (!process.env.OPENAI_API_KEY) {
+    return null;
+  }
+  if (!openai) {
+    openai = new OpenAI({
+      apiKey: process.env.OPENAI_API_KEY,
+    });
+  }
+  return openai;
+}
 
 export interface RecommendationContext {
   persona: string;
@@ -26,14 +36,15 @@ export async function generateRecommendationCopy(
   context: RecommendationContext
 ): Promise<{ title: string; rationale: string }> {
   // Fallback if no API key
-  if (!process.env.OPENAI_API_KEY) {
+  const client = getOpenAIClient();
+  if (!client) {
     return generateFallbackCopy(recommendationType, context);
   }
 
   const prompt = buildPrompt(recommendationType, context);
 
   try {
-    const response = await openai.chat.completions.create({
+    const response = await client.chat.completions.create({
       model: "gpt-4o-mini", // Fast and cost-effective
       messages: [
         {
