@@ -8,25 +8,33 @@ Local-first, explainable financial education engine built on synthetic Plaid-sty
 # 1) Install
 npm i
 
-# 2) Env
-cp .env.example .env
-# (optional) edit DATABASE_URL; default is file:./spendsense.db
+# 2) Set up Supabase
+# Follow docs/SUPABASE_SETUP.md to create a free Supabase project
+# Get your PostgreSQL connection string
 
-# 3) DB + seed synthetic users
-npx prisma migrate dev --name init
+# 3) Env
+cp .env.example .env
+# Edit .env and add your Supabase DATABASE_URL
+
+# 4) DB + seed synthetic users
+npx prisma db push
 npm run seed
 
-# 4) Dev server (Next.js API + UI)
+# 5) Dev server (Next.js API + UI)
 npm run dev
 
-# 5) Eval harness
+# 6) Eval harness
 npm run eval
 
-# 6) Tests
+# 7) Tests
 npm test
 ```
 
 Open http://localhost:3000 for the end-user dashboard and http://localhost:3000/operator for the operator view.
+
+## Important: Supabase Required
+
+This project uses **PostgreSQL via Supabase** (not SQLite). Follow the [Supabase Setup Guide](docs/SUPABASE_SETUP.md) to get started - it takes ~5 minutes and is completely free!
 
 ## What's Included
 - Synthetic data generator (50–100 users) with diverse situations
@@ -38,9 +46,10 @@ Open http://localhost:3000 for the end-user dashboard and http://localhost:3000/
 - Evaluation harness with coverage/explainability/latency/audit metrics
 
 ## Tech Stack
-- Next.js App Router + API Routes
-- TypeScript + Zod + Prisma (SQLite)
-- Tailwind (basic styles) + small UI kit components
+- Next.js 14 App Router + API Routes
+- TypeScript + Zod
+- Prisma ORM + PostgreSQL (Supabase)
+- Tailwind CSS for styling
 - Vitest + tsx for tests and scripts
 
 ## Scripts
@@ -52,13 +61,14 @@ Open http://localhost:3000 for the end-user dashboard and http://localhost:3000/
 
 ## Using the IBM AML Kaggle dataset
 1. Download CSVs and place them under `data/ibm_aml/` (e.g., `HI-Small_Trans.csv`).
-2. Run `npm run import:ibm` to stream‑import into SQLite. Use `IMPORT_LIMIT=100000 npm run import:ibm` to cap rows.
+2. Run `npm run import:ibm` to stream‑import into Supabase. Use `IMPORT_LIMIT=100000 npm run import:ibm` to cap rows.
 3. Hit `/api/profile/:userId` for any imported entity (email looks like `ENTITYID@aml.local`).
 4. Run `npm run eval` to regenerate metrics after import.
 
 **Notes**
 - IBM AML is synthetic; we map originator→user and beneficiary→counterparty; transactions are `transfer`.
 - Subscriptions/income signals may be sparse; keep the default synthetic seed for consumer-style A/B.
+- Import may take a few minutes for large datasets due to database round-trips.
 
 ## Not Financial Advice
 See `docs/DISCLAIMER.md`. All content is educational.

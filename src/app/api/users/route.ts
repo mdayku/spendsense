@@ -3,10 +3,10 @@ import { prisma } from "@/lib/zz_prisma";
 
 export async function GET(req: NextRequest) {
   const url = new URL(req.url);
-  const q = url.searchParams.get("q")?.toLowerCase() || "";
+  const q = url.searchParams.get("q") || "";
   const users = await prisma.user.findMany({
     take: 50,
-    where: q ? { OR: [ { name: { contains: q } }, { email: { contains: q } } ] } : undefined,
+    where: q ? { OR: [ { name: { contains: q, mode: "insensitive" } }, { email: { contains: q, mode: "insensitive" } } ] } : undefined,
     orderBy: { createdAt: "desc" },
   });
   return NextResponse.json({ users });
