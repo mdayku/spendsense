@@ -2,8 +2,17 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/zz_prisma";
 import { enforceConsent, eligible } from "@/lib/guardrails";
 import { recommendationsFor } from "@/lib/recommend";
+import { verifyAccess } from "@/lib/auth-helpers";
+
 export async function GET(_: NextRequest, { params }: { params: { userId: string } }) {
   const { userId } = params;
+  
+  try {
+    await verifyAccess(userId);
+  } catch (error: any) {
+    return NextResponse.json({ error: error.message || "Unauthorized" }, { status: error.message === "Forbidden" ? 403 : 401 });
+  }
+  
   const consent = await prisma.consent.findUnique({ where: { userId } });
   enforceConsent(consent);
   const latest = await prisma.profile.findFirst({ where: { userId }, orderBy: { createdAt: "desc" } });

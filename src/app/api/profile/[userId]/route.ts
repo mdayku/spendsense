@@ -3,9 +3,17 @@ import { prisma } from "@/lib/zz_prisma";
 import { computeSignals } from "@/lib/signals";
 import { assignPersona, shape } from "@/lib/personas";
 import { amlEducationalAlerts } from "@/lib/alerts";
+import { verifyAccess } from "@/lib/auth-helpers";
 
 export async function GET(_: NextRequest, { params }: { params: { userId: string } }) {
   const { userId } = params;
+  
+  try {
+    await verifyAccess(userId);
+  } catch (error: any) {
+    return NextResponse.json({ error: error.message || "Unauthorized" }, { status: error.message === "Forbidden" ? 403 : 401 });
+  }
+  
   const user = await prisma.user.findUnique({ where: { id: userId } });
   if (!user) return NextResponse.json({ error: "User not found" }, { status: 404 });
   
@@ -45,6 +53,13 @@ export async function GET(_: NextRequest, { params }: { params: { userId: string
 // POST endpoint to compute NEW profiles (called manually when needed)
 export async function POST(req: NextRequest, { params }: { params: { userId: string } }) {
   const { userId } = params;
+  
+  try {
+    await verifyAccess(userId);
+  } catch (error: any) {
+    return NextResponse.json({ error: error.message || "Unauthorized" }, { status: error.message === "Forbidden" ? 403 : 401 });
+  }
+  
   const user = await prisma.user.findUnique({ where: { id: userId } });
   if (!user) return NextResponse.json({ error: "User not found" }, { status: 404 });
   

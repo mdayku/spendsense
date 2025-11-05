@@ -38,12 +38,14 @@ export async function generateRecommendationCopy(
   // Fallback if no API key
   const client = getOpenAIClient();
   if (!client) {
+    console.log(`[OpenAI] No API key found, using fallback for: ${recommendationType}`);
     return generateFallbackCopy(recommendationType, context);
   }
 
   const prompt = buildPrompt(recommendationType, context);
 
   try {
+    console.log(`[OpenAI] Generating recommendation copy for: ${recommendationType}`);
     const response = await client.chat.completions.create({
       model: "gpt-4o-mini", // Fast and cost-effective
       messages: [
