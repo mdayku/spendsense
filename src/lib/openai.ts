@@ -58,7 +58,7 @@ export async function generateRecommendationCopy(
           content: prompt
         }
       ],
-      temperature: 0.7,
+      temperature: 0.8,
       max_tokens: 200,
     });
 
@@ -147,9 +147,25 @@ Recommendation Type: ${type}
 User Situation: ${specificContext}
 Persona: ${ctx.persona}
 
+IMPORTANT: Make this recommendation unique and distinct from other recommendations. Focus on the specific aspect of this recommendation type.
+- For "edu-debt-snowball": Focus on debt payoff strategies and the snowball method
+- For "offer-bt-card": Focus on balance transfer options and eligibility
+- For "edu-autopay": Focus on automation and avoiding missed payments
+- For "edu-percent-budget": Focus on percentage-based budgeting for variable income
+- For "tool-buffer-calc": Focus on emergency fund calculation tools
+- For "offer-budget-app": Focus on budgeting app features
+- For "edu-sub-audit": Focus on subscription review and cancellation
+- For "offer-sub-manager": Focus on subscription management tools
+- For "edu-apy": Focus on high-yield savings account benefits
+- For "offer-hysa": Focus on HYSA eligibility and features
+- For "edu-automation": Focus on savings automation strategies
+- For "edu-cushion-1mo": Focus on building first month emergency fund
+- For "edu-expense-triage": Focus on cutting expenses quickly
+- For "offer-roundup": Focus on automatic savings through round-ups
+
 Return ONLY a JSON object with this exact structure:
 {
-  "title": "Action-oriented title under 60 characters",
+  "title": "Action-oriented title under 60 characters that is unique and specific to this recommendation type",
   "rationale": "Specific reason based on user's numbers. This is educational content, not financial advice. Consult a licensed advisor for personalized guidance."
 }`;
 }

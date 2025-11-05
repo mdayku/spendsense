@@ -22,6 +22,23 @@ export default function ProfileView({ params }: { params: { userId: string } }) 
       const rRes = await fetch(`/api/recommendations/${userId}`);
       const r = rRes.ok ? await rRes.json() : { items: [] };
       
+      // Log AI status to browser console
+      if (r.items && r.items.length > 0) {
+        const aiGenerated = r.items.filter((item: any) => item.aiGenerated === true).length;
+        const fallback = r.items.filter((item: any) => item.aiGenerated === false).length;
+        console.log(`[Recommendations] Loaded ${r.items.length} recommendations:`, {
+          '✨ AI-generated': aiGenerated,
+          '📝 Fallback copy': fallback,
+          'Total': r.items.length
+        });
+        if (aiGenerated > 0) {
+          console.log('✅ OpenAI is working! AI-generated recommendations:', 
+            r.items.filter((item: any) => item.aiGenerated).map((item: any) => item.id));
+        } else {
+          console.warn('⚠️ OpenAI may not be working. All recommendations are using fallback copy.');
+        }
+      }
+      
       const aRes = await fetch(`/api/alerts/${userId}`);
       const a = aRes.ok ? await aRes.json() : { alerts30: [], alerts180: [] };
       
