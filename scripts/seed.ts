@@ -2,12 +2,13 @@ import { PrismaClient } from "@prisma/client";
 import { generate } from "./generateSynthetic";
 const prisma = new PrismaClient();
 async function main() {
-  // Use queryRawUnsafe for PRAGMA as it returns results
-  await prisma.$queryRawUnsafe("PRAGMA journal_mode=WAL;");
+  // Clear existing data
   await prisma.user.deleteMany();
-  await prisma.$disconnect();
+  console.log("Cleared existing data");
+  
+  // Generate synthetic data
   await generate();
   console.log("Seed complete.");
 }
-main();
+main().finally(() => prisma.$disconnect());
 
