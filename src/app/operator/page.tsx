@@ -22,28 +22,176 @@ export default function Operator() {
   };
 
   return (
-    <main className="max-w-6xl mx-auto p-6 space-y-6">
-      <h1 className="text-2xl font-bold">Operator Review</h1>
-      <p className="text-slate-600">Approve/override items. Items may include persona changes or AML educational alerts.</p>
-      <button className="px-3 py-2 rounded bg-black text-white" onClick={load} disabled={loading}>{loading?"Loading...":"Refresh"}</button>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+    <main className="max-w-7xl mx-auto p-6 space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold">Operator Review Queue</h1>
+          <p className="text-slate-600 mt-1">Approve or override items that require human oversight</p>
+        </div>
+        <button 
+          className="px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50" 
+          onClick={load} 
+          disabled={loading}
+        >
+          {loading ? "⟳ Loading..." : "↻ Refresh"}
+        </button>
+      </div>
+
+      {items.length === 0 && (
+        <div className="text-center py-12 bg-slate-50 rounded-xl">
+          <div className="text-6xl mb-4">✓</div>
+          <div className="text-xl font-semibold text-slate-700">Queue is Empty</div>
+          <div className="text-slate-500 mt-1">All review items have been processed</div>
+        </div>
+      )}
+
+      <div className="space-y-4">
         {items.map(it => (
-          <div key={it.id} className="p-4 bg-white rounded-xl shadow space-y-2">
-            <div className="text-sm text-slate-500">{new Date(it.createdAt).toLocaleString()}</div>
-            <div className="font-semibold">{it.User.name} <span className="text-slate-500">({it.User.email})</span></div>
-            <div className="text-sm">Persona: <b className="uppercase">{it.Profile.persona}</b> • Window: {it.Profile.windowDays}d</div>
-            <div className="text-xs bg-slate-50 p-2 rounded">Reason: {it.reason}</div>
-            <pre className="text-xs overflow-auto max-h-40 bg-slate-50 p-2 rounded">{it.Profile.decisionTrace}</pre>
-            <div className="flex gap-2">
-              <button className="px-3 py-2 rounded bg-emerald-600 text-white" onClick={()=>decide(it.id, "approve")}>Approve</button>
-              <button className="px-3 py-2 rounded bg-amber-600 text-white" onClick={()=>decide(it.id, "override")}>Override</button>
-              <a className="underline ml-auto" href={`/api/profile/${it.User.id}`} target="_blank">Profile JSON</a>
-            </div>
-          </div>
+          <ReviewItem key={it.id} item={it} onDecide={decide} />
         ))}
       </div>
-      {items.length===0 && <div className="text-slate-500">Queue is empty.</div>}
     </main>
+  );
+}
+
+function ReviewItem({ item, onDecide }: { item: Item; onDecide: (id: string, action: "approve" | "override") => void }) {
+  const [expanded, setExpanded] = React.useState(false);
+  
+  let trace: any = {};
+  try {
+    trace = JSON.parse(item.Profile.decisionTrace);
+  } catch {
+    trace = { error: "Could not parse decision trace", raw: item.Profile.decisionTrace };
+  }
+
+  return (
+    <div className="bg-white rounded-xl shadow-md border border-slate-200 overflow-hidden">
+      {/* Header */}
+      <div className="bg-gradient-to-r from-slate-50 to-slate-100 px-6 py-4 border-b border-slate-200">
+        <div className="flex items-start justify-between">
+          <div className="flex-1">
+            <div className="flex items-center gap-3 mb-2">
+              <h3 className="text-lg font-bold text-slate-900">{item.User.name}</h3>
+              <span className="px-2 py-1 bg-blue-100 text-blue-700 text-xs font-semibold rounded">
+                {item.Profile.windowDays}d window
+              </span>
+              <span className="px-2 py-1 bg-purple-100 text-purple-700 text-xs font-semibold rounded uppercase">
+                {item.Profile.persona}
+              </span>
+            </div>
+            <div className="text-sm text-slate-600">{item.User.email}</div>
+            <div className="text-xs text-slate-500 mt-1">{new Date(item.createdAt).toLocaleString()}</div>
+          </div>
+          <a 
+            className="px-3 py-1 text-sm text-blue-600 hover:text-blue-700 underline" 
+            href={`/profiles/${item.User.id}`} 
+            target="_blank"
+          >
+            View Full Profile →
+          </a>
+        </div>
+      </div>
+
+      {/* Reason */}
+      <div className="px-6 py-4 bg-amber-50 border-b border-amber-200">
+        <div className="text-xs font-semibold text-amber-900 uppercase tracking-wide mb-1">Review Reason</div>
+        <div className="text-sm text-amber-800">{item.reason}</div>
+      </div>
+
+      {/* Decision Trace */}
+      <div className="px-6 py-4">
+        <button
+          onClick={() => setExpanded(!expanded)}
+          className="flex items-center justify-between w-full text-left hover:bg-slate-50 -mx-2 px-2 py-2 rounded transition-colors"
+        >
+          <span className="text-sm font-semibold text-slate-700">
+            {expanded ? "▼" : "▶"} Decision Trace & Signals
+          </span>
+          <span className="text-xs text-slate-500">{expanded ? "Click to collapse" : "Click to expand"}</span>
+        </button>
+        
+        {expanded && (
+          <div className="mt-4 space-y-4">
+            <DecisionTraceView trace={trace} />
+          </div>
+        )}
+      </div>
+
+      {/* Actions */}
+      <div className="px-6 py-4 bg-slate-50 border-t border-slate-200 flex gap-3">
+        <button 
+          className="flex-1 px-4 py-2 rounded-lg bg-emerald-600 text-white font-medium hover:bg-emerald-700 transition-colors"
+          onClick={() => onDecide(item.id, "approve")}
+        >
+          ✓ Approve
+        </button>
+        <button 
+          className="flex-1 px-4 py-2 rounded-lg bg-amber-600 text-white font-medium hover:bg-amber-700 transition-colors"
+          onClick={() => onDecide(item.id, "override")}
+        >
+          ✕ Override
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function DecisionTraceView({ trace }: { trace: any }) {
+  if (trace.error) {
+    return <pre className="text-xs bg-slate-100 p-4 rounded overflow-auto">{trace.raw}</pre>;
+  }
+
+  return (
+    <div className="space-y-4">
+      {/* Signals */}
+      {trace.signals && (
+        <div className="bg-blue-50 rounded-lg p-4">
+          <h4 className="font-semibold text-blue-900 mb-3">Behavioral Signals</h4>
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-3 text-sm">
+            <SignalBadge label="Subscription Count" value={trace.signals.subscriptionCount} />
+            <SignalBadge label="Monthly Recurring" value={`$${trace.signals.monthlyRecurring?.toFixed(0)}`} />
+            <SignalBadge label="Sub Share" value={`${(trace.signals.subscriptionShare * 100).toFixed(1)}%`} />
+            <SignalBadge label="Savings Inflow" value={`$${trace.signals.netSavingsInflow?.toFixed(0)}/mo`} />
+            <SignalBadge label="Savings Growth" value={`${(trace.signals.savingsGrowthRate * 100).toFixed(1)}%`} />
+            <SignalBadge label="Emergency Fund" value={`${trace.signals.emergencyMonths?.toFixed(2)} mo`} />
+            <SignalBadge label="Max Utilization" value={`${(trace.signals.utilMax * 100).toFixed(0)}%`} />
+            <SignalBadge label="Util Flags" value={trace.signals.utilFlags || "none"} />
+            <SignalBadge label="Income Gap" value={`${trace.signals.incomeMedianGap} days`} />
+            <SignalBadge label="Cash Buffer" value={`${trace.signals.cashBufferMonths?.toFixed(2)} mo`} />
+          </div>
+        </div>
+      )}
+
+      {/* Persona Assignment */}
+      {trace.persona && (
+        <div className="bg-purple-50 rounded-lg p-4">
+          <h4 className="font-semibold text-purple-900 mb-2">Persona Assignment</h4>
+          <div className="text-2xl font-bold text-purple-700 uppercase mb-2">{trace.persona}</div>
+          {trace.personaReason && (
+            <div className="text-sm text-purple-800 bg-white rounded p-2">{trace.personaReason}</div>
+          )}
+        </div>
+      )}
+
+      {/* Full JSON (collapsible) */}
+      <details className="bg-slate-100 rounded-lg">
+        <summary className="px-4 py-2 cursor-pointer text-sm font-medium text-slate-700 hover:bg-slate-200 rounded-lg">
+          View Raw JSON
+        </summary>
+        <pre className="text-xs p-4 overflow-auto max-h-96 border-t border-slate-200">
+          {JSON.stringify(trace, null, 2)}
+        </pre>
+      </details>
+    </div>
+  );
+}
+
+function SignalBadge({ label, value }: { label: string; value: any }) {
+  return (
+    <div className="bg-white rounded p-2 border border-blue-200">
+      <div className="text-xs text-slate-600">{label}</div>
+      <div className="font-semibold text-slate-900">{value ?? "N/A"}</div>
+    </div>
   );
 }
 
