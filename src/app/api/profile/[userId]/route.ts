@@ -28,7 +28,6 @@ export async function GET(_: NextRequest, { params }: { params: { userId: string
   const cleanProfiles = profiles.map(p => ({
     ...p,
     createdAt: p?.createdAt?.toISOString(),
-    updatedAt: p?.updatedAt?.toISOString(),
   }));
   
   const cleanConsent = consent ? {
