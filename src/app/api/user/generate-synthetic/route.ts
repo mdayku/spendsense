@@ -18,9 +18,9 @@ export async function POST(req: NextRequest) {
     const url = new URL(req.url);
     const force = url.searchParams.get("force") === "true";
     
-    let body = {};
+    let body: { force?: boolean } = {};
     try {
-      body = await req.json();
+      body = await req.json() as { force?: boolean };
     } catch {
       // Body might be empty, that's fine
     }
