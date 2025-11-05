@@ -14,7 +14,7 @@ async function evalAll() {
     const t0 = performance.now();
     const s = await computeSignals(u.id, 30);
     const persona = assignPersona(shape(s));
-    const items = recommendationsFor(persona.key, s, { last4: "4523" });
+    const items = await recommendationsFor(persona.key, s, { last4: "4523" }, false);
     const latency = performance.now() - t0;
     const explainability = items.every(i => i.rationale && i.rationale.length > 0);
     const coverage = Boolean(persona.key) && [ s.subscriptionCount >= 0, s.netSavingsInflow !== undefined, s.utilMax !== undefined, s.incomeMedianGap !== undefined ].filter(Boolean).length >= 3;
