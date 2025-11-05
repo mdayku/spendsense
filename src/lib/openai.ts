@@ -64,17 +64,29 @@ export async function generateRecommendationCopy(
 
     const content = response.choices[0]?.message?.content;
     if (!content) {
+      console.warn(`[OpenAI] No content in response for ${recommendationType}, using fallback`);
       return generateFallbackCopy(recommendationType, context);
     }
 
     // Parse the response (expecting JSON format)
-    const parsed = JSON.parse(content);
-    return {
-      title: parsed.title || "Financial recommendation",
-      rationale: parsed.rationale || "This is educational content, not financial advice. Consult a licensed advisor for personalized guidance."
-    };
-  } catch (error) {
-    console.error("OpenAI API error:", error);
+    try {
+      const parsed = JSON.parse(content);
+      console.log(`[OpenAI] Successfully generated AI copy for ${recommendationType}`);
+      return {
+        title: parsed.title || "Financial recommendation",
+        rationale: parsed.rationale || "This is educational content, not financial advice. Consult a licensed advisor for personalized guidance."
+      };
+    } catch (parseError) {
+      console.error(`[OpenAI] Failed to parse JSON response for ${recommendationType}:`, parseError, "Raw content:", content);
+      return generateFallbackCopy(recommendationType, context);
+    }
+  } catch (error: any) {
+    console.error(`[OpenAI] API error for ${recommendationType}:`, {
+      message: error.message,
+      code: error.code,
+      status: error.status,
+      type: error.type
+    });
     return generateFallbackCopy(recommendationType, context);
   }
 }

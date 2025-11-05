@@ -39,12 +39,14 @@ export async function recommendationsFor(
     if (useAI) {
       try {
         const aiCopy = await generateRecommendationCopy(id, aiContext);
-        return { id, kind, title: aiCopy.title, rationale: aiCopy.rationale };
+        console.log(`[Recommendations] AI-generated copy for ${id}:`, { title: aiCopy.title, rationale: aiCopy.rationale.substring(0, 50) + '...' });
+        return { id, kind, title: aiCopy.title, rationale: aiCopy.rationale, aiGenerated: true };
       } catch (error) {
-        console.error(`AI generation failed for ${id}, using fallback`, error);
+        console.error(`[Recommendations] AI generation failed for ${id}, using fallback:`, error);
+        return { id, kind, title: defaultTitle, rationale: defaultRationale, aiGenerated: false };
       }
     }
-    return { id, kind, title: defaultTitle, rationale: defaultRationale };
+    return { id, kind, title: defaultTitle, rationale: defaultRationale, aiGenerated: false };
   };
 
   if (persona === "high_utilization") {

@@ -242,7 +242,14 @@ function RecommendationCard({ item }: { item: any }) {
       <div className="flex items-start gap-3">
         <div className="text-2xl">{icons[item.kind] || "💡"}</div>
         <div className="flex-1">
-          <h3 className="font-bold text-emerald-900 mb-1">{item.title}</h3>
+          <div className="flex items-center gap-2 mb-1">
+            <h3 className="font-bold text-emerald-900">{item.title}</h3>
+            {item.aiGenerated && (
+              <span className="text-xs px-2 py-0.5 bg-purple-100 text-purple-700 rounded-full font-medium" title="AI-generated recommendation">
+                ✨ AI
+              </span>
+            )}
+          </div>
           <p className="text-sm text-emerald-800">{item.rationale}</p>
         </div>
       </div>

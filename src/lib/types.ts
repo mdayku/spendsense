@@ -13,6 +13,7 @@ export interface RecommendationItem {
   url?: string;
   rationale: string; // plain-language "because" with concrete data
   disclosure?: string; // standard disclaimer
+  aiGenerated?: boolean; // indicates if AI was used to generate this recommendation
 }
 
 export interface EligibilityContext {
