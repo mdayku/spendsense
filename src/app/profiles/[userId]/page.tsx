@@ -8,15 +8,30 @@ export default function ProfileView({ params }: { params: { userId: string } }) 
   const [alerts, setAlerts] = React.useState<{alerts30:string[];alerts180:string[]}>({alerts30:[],alerts180:[]});
   const [labels, setLabels] = React.useState<number>(0);
 
-  React.useEffect(() => {
-    (async () => {
-      const p = await fetch(`/api/profile/${userId}`).then(r=>r.json());
-      const r = await fetch(`/api/recommendations/${userId}`).then(r=>r.json());
-      const a = await fetch(`/api/alerts/${userId}`).then(r=>r.json());
-      const l = await fetch(`/api/aml/labels/${userId}`).then(r=>r.json());
-      setProfileData(p); setRecs(r); setAlerts(a); setLabels(l.count || 0);
-    })();
+  const [refreshing, setRefreshing] = React.useState(false);
+  
+  const loadData = React.useCallback(async () => {
+    const p = await fetch(`/api/profile/${userId}`).then(r=>r.json());
+    const r = await fetch(`/api/recommendations/${userId}`).then(r=>r.json());
+    const a = await fetch(`/api/alerts/${userId}`).then(r=>r.json());
+    const l = await fetch(`/api/aml/labels/${userId}`).then(r=>r.json());
+    setProfileData(p); setRecs(r); setAlerts(a); setLabels(l.count || 0);
   }, [userId]);
+  
+  const recomputeProfile = async () => {
+    setRefreshing(true);
+    try {
+      await fetch(`/api/profile/${userId}`, { method: 'POST' });
+      await loadData();
+    } catch (e) {
+      console.error('Failed to recompute profile:', e);
+    }
+    setRefreshing(false);
+  };
+  
+  React.useEffect(() => {
+    loadData();
+  }, [loadData]);
 
   if (!profileData) return (
     <main className="max-w-7xl mx-auto p-6">
@@ -38,9 +53,18 @@ export default function ProfileView({ params }: { params: { userId: string } }) 
           <h1 className="text-3xl font-bold">User Profile</h1>
           <p className="text-slate-600 mt-1">{profileData.user?.name} • {profileData.user?.email}</p>
         </div>
-        <a href="/users" className="px-4 py-2 text-sm text-blue-600 hover:text-blue-700 underline">
-          ← Back to Users
-        </a>
+        <div className="flex gap-3 items-center">
+          <button
+            onClick={recomputeProfile}
+            disabled={refreshing}
+            className="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {refreshing ? "↻ Recomputing..." : "↻ Recompute Profile"}
+          </button>
+          <a href="/users" className="px-4 py-2 text-sm text-blue-600 hover:text-blue-700 underline">
+            ← Back to Users
+          </a>
+        </div>
       </div>
 
       {/* Alerts */}

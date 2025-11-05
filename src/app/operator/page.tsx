@@ -141,34 +141,41 @@ function DecisionTraceView({ trace }: { trace: any }) {
     return <pre className="text-xs bg-slate-100 p-4 rounded overflow-auto">{trace.raw}</pre>;
   }
 
+  // Handle old format where persona was an object {key, reason, priority}
+  const personaKey = typeof trace.persona === 'string' ? trace.persona : trace.persona?.key;
+  const personaReason = trace.personaReason || trace.persona?.reason;
+  
+  // Handle old format where signals might be nested under 's'
+  const signals = trace.signals || trace.s;
+
   return (
     <div className="space-y-4">
       {/* Signals */}
-      {trace.signals && (
+      {signals && (
         <div className="bg-blue-50 rounded-lg p-4">
           <h4 className="font-semibold text-blue-900 mb-3">Behavioral Signals</h4>
           <div className="grid grid-cols-2 md:grid-cols-3 gap-3 text-sm">
-            <SignalBadge label="Subscription Count" value={trace.signals.subscriptionCount} />
-            <SignalBadge label="Monthly Recurring" value={`$${trace.signals.monthlyRecurring?.toFixed(0)}`} />
-            <SignalBadge label="Sub Share" value={`${(trace.signals.subscriptionShare * 100).toFixed(1)}%`} />
-            <SignalBadge label="Savings Inflow" value={`$${trace.signals.netSavingsInflow?.toFixed(0)}/mo`} />
-            <SignalBadge label="Savings Growth" value={`${(trace.signals.savingsGrowthRate * 100).toFixed(1)}%`} />
-            <SignalBadge label="Emergency Fund" value={`${trace.signals.emergencyMonths?.toFixed(2)} mo`} />
-            <SignalBadge label="Max Utilization" value={`${(trace.signals.utilMax * 100).toFixed(0)}%`} />
-            <SignalBadge label="Util Flags" value={trace.signals.utilFlags || "none"} />
-            <SignalBadge label="Income Gap" value={`${trace.signals.incomeMedianGap} days`} />
-            <SignalBadge label="Cash Buffer" value={`${trace.signals.cashBufferMonths?.toFixed(2)} mo`} />
+            <SignalBadge label="Subscription Count" value={signals.subscriptionCount} />
+            <SignalBadge label="Monthly Recurring" value={signals.monthlyRecurring != null ? `$${signals.monthlyRecurring.toFixed(0)}` : "N/A"} />
+            <SignalBadge label="Sub Share" value={signals.subscriptionShare != null ? `${(signals.subscriptionShare * 100).toFixed(1)}%` : "N/A"} />
+            <SignalBadge label="Savings Inflow" value={signals.netSavingsInflow != null ? `$${signals.netSavingsInflow.toFixed(0)}/mo` : "N/A"} />
+            <SignalBadge label="Savings Growth" value={signals.savingsGrowthRate != null ? `${(signals.savingsGrowthRate * 100).toFixed(1)}%` : "N/A"} />
+            <SignalBadge label="Emergency Fund" value={signals.emergencyMonths != null ? `${signals.emergencyMonths.toFixed(2)} mo` : "N/A"} />
+            <SignalBadge label="Max Utilization" value={signals.utilMax != null ? `${(signals.utilMax * 100).toFixed(0)}%` : "N/A"} />
+            <SignalBadge label="Util Flags" value={signals.utilFlags || "none"} />
+            <SignalBadge label="Income Gap" value={signals.incomeMedianGap != null ? `${signals.incomeMedianGap} days` : "N/A"} />
+            <SignalBadge label="Cash Buffer" value={signals.cashBufferMonths != null ? `${signals.cashBufferMonths.toFixed(2)} mo` : "N/A"} />
           </div>
         </div>
       )}
 
       {/* Persona Assignment */}
-      {trace.persona && (
+      {personaKey && (
         <div className="bg-purple-50 rounded-lg p-4">
           <h4 className="font-semibold text-purple-900 mb-2">Persona Assignment</h4>
-          <div className="text-2xl font-bold text-purple-700 uppercase mb-2">{trace.persona}</div>
-          {trace.personaReason && (
-            <div className="text-sm text-purple-800 bg-white rounded p-2">{trace.personaReason}</div>
+          <div className="text-2xl font-bold text-purple-700 uppercase mb-2">{personaKey}</div>
+          {personaReason && (
+            <div className="text-sm text-purple-800 bg-white rounded p-2">{personaReason}</div>
           )}
         </div>
       )}
