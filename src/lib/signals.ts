@@ -10,8 +10,8 @@ export async function computeSignals(userId: string, windowDays: 30 | 180) {
     prisma.liability.findMany({ where: { userId } }),
   ]);
 
-  const expenses = tx.filter(t => t.amount < 0);
-  const totalSpend = Math.abs(expenses.reduce((s, t) => s + t.amount, 0));
+  const expenses = tx.filter((t: { amount: number }) => t.amount < 0);
+  const totalSpend = Math.abs(expenses.reduce((s: number, t: { amount: number }) => s + t.amount, 0));
 
   const byMerchant = new Map<string, Date[]>();
   for (const t of expenses) {
@@ -22,47 +22,47 @@ export async function computeSignals(userId: string, windowDays: 30 | 180) {
   let recurringCount = 0;
   let monthlyRecurringUSD = 0;
   for (const [m, dates] of byMerchant) {
-    const sorted = dates.sort((a, b) => a.getTime() - b.getTime());
-    const gaps = sorted.slice(1).map((d, i) => (d.getTime() - sorted[i].getTime()) / (1000*3600*24));
-    const avgGap = gaps.length ? gaps.reduce((s,g)=>s+g,0)/gaps.length : Infinity;
+    const sorted = dates.sort((a: Date, b: Date) => a.getTime() - b.getTime());
+    const gaps = sorted.slice(1).map((d: Date, i: number) => (d.getTime() - sorted[i].getTime()) / (1000*3600*24));
+    const avgGap = gaps.length ? gaps.reduce((s: number, g: number) => s + g, 0) / gaps.length : Infinity;
     if (sorted.length >= 3 && (avgGap > 20 && avgGap < 40 || avgGap > 6 && avgGap < 9)) {
       recurringCount++;
-      const spend = expenses.filter(t => (t.merchant||t.merchantEntityId||"unknown")===m)
-                            .reduce((s,t)=>s + Math.abs(t.amount), 0);
+      const spend = expenses.filter((t: { merchant?: string; merchantEntityId?: string }) => (t.merchant||t.merchantEntityId||"unknown")===m)
+                            .reduce((s: number, t: { amount: number }) => s + Math.abs(t.amount), 0);
       monthlyRecurringUSD += spend / Math.max(1, windowDays/30);
     }
   }
   const subscriptionShare = totalSpend ? monthlyRecurringUSD / (totalSpend / Math.max(1, windowDays/30)) : 0;
 
-  const savingsAcctIds = accts.filter(a => ["savings","money_market","hsa"].includes(a.type))
-                              .map(a => a.id);
-  const savingsTx = tx.filter(t => savingsAcctIds.includes(t.accountId));
-  const netSavingsInflow = savingsTx.reduce((s,t)=> s + t.amount, 0) / Math.max(1, windowDays/30);
+  const savingsAcctIds = accts.filter((a: { type: string }) => ["savings","money_market","hsa"].includes(a.type))
+                              .map((a: { id: string }) => a.id);
+  const savingsTx = tx.filter((t: { accountId: string }) => savingsAcctIds.includes(t.accountId));
+  const netSavingsInflow = savingsTx.reduce((s: number, t: { amount: number }) => s + t.amount, 0) / Math.max(1, windowDays/30);
   const prevWindowSince = dayjs(since).subtract(windowDays, "day").toDate();
   const prevSavingsTx = await prisma.transaction.findMany({ where: { userId, date: { gte: prevWindowSince, lt: since } }});
-  const prevNet = prevSavingsTx.filter(t=>savingsAcctIds.includes(t.accountId)).reduce((s,t)=>s+t.amount,0);
-  const currNet = savingsTx.reduce((s,t)=>s+t.amount,0);
+  const prevNet = prevSavingsTx.filter((t: { accountId: string }) => savingsAcctIds.includes(t.accountId)).reduce((s: number, t: { amount: number }) => s + t.amount, 0);
+  const currNet = savingsTx.reduce((s: number, t: { amount: number }) => s + t.amount, 0);
   const savingsGrowthRate = prevNet === 0 ? (currNet>0?1:0) : (currNet - prevNet) / Math.abs(prevNet);
 
   const savingsBalance = (await prisma.account.findMany({ where: { id: { in: savingsAcctIds }}}))
-      .reduce((s,a)=> s + (a.balanceCurrent || 0), 0);
+      .reduce((s: number, a: { balanceCurrent?: number }) => s + (a.balanceCurrent || 0), 0);
   const avgMonthlyExpenses = totalSpend / Math.max(1, windowDays/30);
   const emergencyMonths = avgMonthlyExpenses ? savingsBalance / avgMonthlyExpenses : 0;
 
-  const creditAccts = accts.filter(a => a.type === "credit");
-  const utils = creditAccts.map(a => (a.balanceCurrent||0) / Math.max(1, a.creditLimit||0));
+  const creditAccts = accts.filter((a: { type: string }) => a.type === "credit");
+  const utils = creditAccts.map((a: { balanceCurrent?: number; creditLimit?: number }) => (a.balanceCurrent||0) / Math.max(1, a.creditLimit||0));
   const utilMax = utils.length ? Math.max(...utils) : 0;
-  const utilFlags = THRESHOLDS.utilFlags.filter(f => utilMax >= f).map(f=>Math.round(f*100)).join(",");
+  const utilFlags = THRESHOLDS.utilFlags.filter((f: number) => utilMax >= f).map((f: number) => Math.round(f*100)).join(",");
   const minPayOnly = (await prisma.liability.findMany({ where: { userId, type: "credit_card" }}))
-    .some(l => (l.minPayment||0) > 0 && Math.abs(l.lastPayment||0) <= (l.minPayment||0)+1e-6);
+    .some((l: { minPayment?: number; lastPayment?: number }) => (l.minPayment||0) > 0 && Math.abs(l.lastPayment||0) <= (l.minPayment||0)+1e-6);
   const interestCharges = (await prisma.liability.findMany({ where: { userId, type: "credit_card" }}))
-    .some(l => (l.aprPercent||0) > 0 && (l.lastStmtBal||0) > 0);
+    .some((l: { aprPercent?: number; lastStmtBal?: number }) => (l.aprPercent||0) > 0 && (l.lastStmtBal||0) > 0);
   const overdue = (await prisma.liability.findMany({ where: { userId, type: "credit_card" }}))
-    .some(l => !!l.isOverdue);
+    .some((l: { isOverdue?: boolean }) => !!l.isOverdue);
 
-  const incomes = tx.filter(t => t.amount > 0 && t.pfcPrimary === "income").map(t=>t.date).sort((a,b)=>a.getTime()-b.getTime());
-  const incomeGaps = incomes.slice(1).map((d,i)=>(d.getTime()-incomes[i].getTime())/(1000*3600*24));
-  const incomeMedianGap = incomeGaps.length ? incomeGaps.sort((a,b)=>a-b)[Math.floor(incomeGaps.length/2)] : 999;
+  const incomes = tx.filter((t: { amount: number; pfcPrimary?: string }) => t.amount > 0 && t.pfcPrimary === "income").map((t: { date: Date }) => t.date).sort((a: Date, b: Date) => a.getTime()-b.getTime());
+  const incomeGaps = incomes.slice(1).map((d: Date, i: number) => (d.getTime()-incomes[i].getTime())/(1000*3600*24));
+  const incomeMedianGap = incomeGaps.length ? incomeGaps.sort((a: number, b: number) => a-b)[Math.floor(incomeGaps.length/2)] : 999;
   const cashBufferMonths = emergencyMonths;
 
   return {

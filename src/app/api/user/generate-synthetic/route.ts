@@ -34,7 +34,7 @@ export async function POST(req: NextRequest) {
         where: { userId },
         take: 1,
       })
-    );
+    ) as Array<{ id: string }>;
 
     // Check if profiles exist (with retry logic)
     const existingProfiles = await retryDbOperation(() =>
@@ -42,7 +42,7 @@ export async function POST(req: NextRequest) {
         where: { userId },
         take: 1,
       })
-    );
+    ) as Array<{ id: string }>;
 
     // If force regenerate is requested, delete all existing data
     if (forceRegenerate && existingTransactions.length > 0) {

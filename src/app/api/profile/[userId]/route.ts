@@ -31,8 +31,8 @@ export async function GET(_: NextRequest, { params }: { params: { userId: string
     }
     
     // Get the most recent profile for each window
-    const profile30 = existingProfiles?.find(p => p.windowDays === 30);
-    const profile180 = existingProfiles?.find(p => p.windowDays === 180);
+    const profile30 = existingProfiles?.find((p: { windowDays: number }) => p.windowDays === 30);
+    const profile180 = existingProfiles?.find((p: { windowDays: number }) => p.windowDays === 180);
     
     const profiles = [profile30, profile180].filter(Boolean);
     

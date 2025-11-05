@@ -119,9 +119,9 @@ export async function POST(req: NextRequest) {
 
       // Reload accounts to get their IDs
       const accounts = await prisma.account.findMany({ where: { userId } });
-      const checking = accounts.find((a) => a.type === AccountType.checking);
-      const savings = accounts.find((a) => a.type === AccountType.savings);
-      const credit = accounts.find((a) => a.type === AccountType.credit);
+      const checking = accounts.find((a: { type: AccountType }) => a.type === AccountType.checking);
+      const savings = accounts.find((a: { type: AccountType }) => a.type === AccountType.savings);
+      const credit = accounts.find((a: { type: AccountType }) => a.type === AccountType.credit);
 
       // Map transactions to accounts based on accountType
       const txData = transactions.map((tx) => {
@@ -144,7 +144,7 @@ export async function POST(req: NextRequest) {
       await prisma.transaction.createMany({ data: txData });
     } else {
       // Use existing accounts
-      const checking = existingAccounts.find((a) => a.type === AccountType.checking) || existingAccounts[0];
+      const checking = existingAccounts.find((a: { type: AccountType }) => a.type === AccountType.checking) || existingAccounts[0];
       
       const txData = transactions.map((tx) => ({
         userId,
