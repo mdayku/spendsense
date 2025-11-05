@@ -14,7 +14,9 @@ npm i
 
 # 3) Env
 cp .env.example .env
-# Edit .env and add your Supabase DATABASE_URL
+# Edit .env and add:
+#   - DATABASE_URL (your Supabase connection string)
+#   - OPENAI_API_KEY (optional - for AI-generated recommendations)
 
 # 4) DB + seed synthetic users
 npx prisma db push
@@ -42,6 +44,7 @@ This project uses **PostgreSQL via Supabase** (not SQLite). Follow the [Supabase
 - 5 personas (4 specified + 1 custom) with prioritization
 - Guardrails (consent, eligibility, tone + disclosures)
 - Recommendation engine with explicit "because" rationales
+- **AI-Powered Recommendations** (optional) - Dynamic, personalized copy via OpenAI
 - Operator view with approval/override stub and decision traces
 - Evaluation harness with coverage/explainability/latency/audit metrics
 
@@ -58,6 +61,24 @@ This project uses **PostgreSQL via Supabase** (not SQLite). Follow the [Supabase
 - `npm run eval` – run evaluation and write JSON + summary to console
 - `npm run import:ibm` – import IBM AML CSVs in `data/ibm_aml/`
 - `npm test` – run unit tests
+
+## AI-Powered Recommendations (Optional)
+
+By default, recommendations use template-based copy. Add `OPENAI_API_KEY` to your `.env` to enable AI-generated personalized recommendations:
+
+```bash
+OPENAI_API_KEY="sk-..."
+```
+
+**What it does:**
+- Generates dynamic titles and rationales based on user's actual financial data
+- Makes recommendations feel more conversational and contextual
+- Falls back to static templates if API key is missing or requests fail
+- Uses GPT-4o-mini for fast, cost-effective generation (~$0.0001 per recommendation)
+
+**Example difference:**
+- **Static:** "Autopay to avoid interest & fees"
+- **AI:** "Set up autopay to stop missing payments and save $84/month"
 
 ## Using the IBM AML Kaggle dataset
 1. Download CSVs and place them under `data/ibm_aml/` (e.g., `HI-Small_Trans.csv`).

@@ -10,7 +10,10 @@ export async function GET(_: NextRequest, { params }: { params: { userId: string
   if (!latest) return NextResponse.json({ items: [] });
   const acct = await prisma.account.findFirst({ where: { userId, type: "credit" }});
   const last4 = (acct?.numberMasked || "").slice(-4);
-  const items = recommendationsFor(latest.persona, latest, { last4 });
+  
+  // Pass useAI flag and full context for AI generation
+  const items = await recommendationsFor(latest.persona, latest, { last4 }, true);
+  
   const ctx = { hasSavingsAccount: !!(await prisma.account.findFirst({ where: { userId, type: "savings" } })), incomeMonthly: 0, maxUtilization: latest.utilMax, overdue: latest.overdue };
   const filtered = items.filter(i => eligible(i, ctx));
   return NextResponse.json({ items: filtered });
