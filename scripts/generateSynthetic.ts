@@ -1,5 +1,5 @@
 import dayjs from "dayjs";
-import { PrismaClient } from "@prisma/client";
+import { PrismaClient, AccountType, Channel, PFCPrimary, LiabilityType, ConsentStatus } from "@prisma/client";
 const prisma = new PrismaClient();
 const SEED = Number(process.env.SEED_USERS || 75);
 function pick<T>(arr: T[]) { return arr[Math.floor(Math.random()*arr.length)]; }
@@ -20,34 +20,34 @@ export async function generate() {
     
     const userId = `user_${i}_${Date.now()}`;
     users.push({ id: userId, name: `User ${i+1}`, email: `user${i+1}@example.test` });
-    consents.push({ userId, status: Math.random()<0.8?"OPTED_IN":"OPTED_OUT" });
+    consents.push({ userId, status: Math.random()<0.8 ? ConsentStatus.OPTED_IN : ConsentStatus.OPTED_OUT });
     
     const checkingId = `checking_${i}_${Date.now()}`;
     const savingsId = `savings_${i}_${Date.now()}`;
     const creditId = `credit_${i}_${Date.now()}`;
     
     accounts.push({ 
-      id: checkingId, userId, type: "checking", subtype: "checking", 
+      id: checkingId, userId, type: AccountType.checking, subtype: "checking", 
       numberMasked: `****${1000+i}`, isoCurrencyCode: "USD", 
       balanceCurrent: amount(1000+Math.random()*4000) 
     });
     
     if (Math.random()<0.7) {
       accounts.push({ 
-        id: savingsId, userId, type: "savings", subtype: "savings", 
+        id: savingsId, userId, type: AccountType.savings, subtype: "savings", 
         numberMasked: `****${2000+i}`, isoCurrencyCode: "USD", 
         balanceCurrent: amount(500+Math.random()*8000) 
       });
     }
     
     accounts.push({ 
-      id: creditId, userId, type: "credit", subtype: "visa", 
+      id: creditId, userId, type: AccountType.credit, subtype: "visa", 
       numberMasked: `****${3000+i}`, isoCurrencyCode: "USD", 
       balanceCurrent: amount(Math.random()*5000), creditLimit: 5000 
     });
     
     liabilities.push({ 
-      userId, accountId: creditId, type: "credit_card", aprType: "variable", 
+      userId, accountId: creditId, type: LiabilityType.credit_card, aprType: "variable", 
       aprPercent: 0.22, minPayment: 35, lastPayment: Math.random()<0.5?35:120, 
       isOverdue: Math.random()<0.1, nextDueDate: dayjs().add(10, "day").toDate(), 
       lastStmtBal: amount(Math.random()*5000) 
@@ -60,7 +60,7 @@ export async function generate() {
         transactions.push({ 
           userId, accountId: checkingId, date, 
           amount: amount(1200+Math.random()*800), merchant: "Payroll ACH", 
-          paymentChannel: "online", pfcPrimary: "income" 
+          paymentChannel: Channel.online, pfcPrimary: PFCPrimary.income 
         });
       }
       if (Math.random()<0.6) {
@@ -68,8 +68,8 @@ export async function generate() {
           userId, accountId: checkingId, date, 
           amount: -amount(5+Math.random()*60), 
           merchant: pick(["CoffeeCo","Grocer","Deli","Transit"]), 
-          paymentChannel: pick(["online","in_store"]), 
-          pfcPrimary: pick(["groceries","dining","other"]) 
+          paymentChannel: pick([Channel.online, Channel.in_store]), 
+          pfcPrimary: pick([PFCPrimary.groceries, PFCPrimary.dining, PFCPrimary.other]) 
         });
       }
       if (d%30===0) {
@@ -77,7 +77,7 @@ export async function generate() {
           transactions.push({ 
             userId, accountId: checkingId, date, 
             amount: -amount(5+Math.random()*20), merchant: m, 
-            paymentChannel: "online", pfcPrimary: "subscription" 
+            paymentChannel: Channel.online, pfcPrimary: PFCPrimary.subscription 
           });
         }
       }
@@ -85,7 +85,7 @@ export async function generate() {
         transactions.push({ 
           userId, accountId: savingsId, date, 
           amount: amount(10+Math.random()*150), merchant: "Transfer In", 
-          paymentChannel: "online", pfcPrimary: "transfer" 
+          paymentChannel: Channel.online, pfcPrimary: PFCPrimary.transfer 
         });
       }
     }
