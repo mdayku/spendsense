@@ -66,7 +66,7 @@ jobs:
       continue-on-error: true
 
   # Evaluate job disabled for now - requires separate test database to avoid modifying production
-  # Re-enable when you have a dedicated CI database instance
+  # Re-enable when you have a dedicated CI database instance (e.g., Neon branch or separate project)
   # evaluate:
   #   name: Run Evaluation Metrics
   #   runs-on: ubuntu-latest

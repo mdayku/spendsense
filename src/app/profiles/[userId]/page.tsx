@@ -11,11 +11,31 @@ export default function ProfileView({ params }: { params: { userId: string } }) 
   const [refreshing, setRefreshing] = React.useState(false);
   
   const loadData = React.useCallback(async () => {
-    const p = await fetch(`/api/profile/${userId}`).then(r=>r.json());
-    const r = await fetch(`/api/recommendations/${userId}`).then(r=>r.json());
-    const a = await fetch(`/api/alerts/${userId}`).then(r=>r.json());
-    const l = await fetch(`/api/aml/labels/${userId}`).then(r=>r.json());
-    setProfileData(p); setRecs(r); setAlerts(a); setLabels(l.count || 0);
+    try {
+      const pRes = await fetch(`/api/profile/${userId}`);
+      if (!pRes.ok) {
+        const errorData = await pRes.json().catch(() => ({ error: "Failed to fetch profile" }));
+        throw new Error(errorData.error || `HTTP ${pRes.status}`);
+      }
+      const p = await pRes.json();
+      
+      const rRes = await fetch(`/api/recommendations/${userId}`);
+      const r = rRes.ok ? await rRes.json() : { items: [] };
+      
+      const aRes = await fetch(`/api/alerts/${userId}`);
+      const a = aRes.ok ? await aRes.json() : { alerts30: [], alerts180: [] };
+      
+      const lRes = await fetch(`/api/aml/labels/${userId}`);
+      const l = lRes.ok ? await lRes.json() : { count: 0 };
+      
+      setProfileData(p); 
+      setRecs(r); 
+      setAlerts(a); 
+      setLabels(l.count || 0);
+    } catch (error: any) {
+      console.error("Failed to load profile data:", error);
+      alert(`Failed to load profile: ${error.message || "Unknown error"}`);
+    }
   }, [userId]);
   
   const recomputeProfile = async () => {

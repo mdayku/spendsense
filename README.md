@@ -8,14 +8,14 @@ Local-first, explainable financial education engine built on synthetic Plaid-sty
 # 1) Install
 npm i
 
-# 2) Set up Supabase
-# Follow docs/SUPABASE_SETUP.md to create a free Supabase project
+# 2) Set up Neon (or Supabase)
+# Follow docs/NEON_SETUP.md to create a free Neon database
 # Get your PostgreSQL connection string
 
 # 3) Env
 cp .env.example .env
 # Edit .env and add:
-#   - DATABASE_URL (your Supabase connection string)
+#   - DATABASE_URL (your Neon connection string)
 #   - OPENAI_API_KEY (optional - for AI-generated recommendations)
 
 # 4) DB + seed synthetic users
@@ -34,9 +34,11 @@ npm test
 
 Open http://localhost:3000 for the end-user dashboard and http://localhost:3000/operator for the operator view.
 
-## Important: Supabase Required
+## Important: PostgreSQL Required
 
-This project uses **PostgreSQL via Supabase** (not SQLite). Follow the [Supabase Setup Guide](docs/SUPABASE_SETUP.md) to get started - it takes ~5 minutes and is completely free!
+This project uses **PostgreSQL** (not SQLite). We recommend **Neon** for the best experience (no auto-pause, better reliability). Follow the [Neon Setup Guide](docs/NEON_SETUP.md) to get started - it takes ~5 minutes and is completely free!
+
+Alternatively, you can use [Supabase](docs/SUPABASE_SETUP.md) if you prefer.
 
 ## What's Included
 - Synthetic data generator (50–100 users) with diverse situations
@@ -51,7 +53,7 @@ This project uses **PostgreSQL via Supabase** (not SQLite). Follow the [Supabase
 ## Tech Stack
 - Next.js 14 App Router + API Routes
 - TypeScript + Zod
-- Prisma ORM + PostgreSQL (Supabase)
+- Prisma ORM + PostgreSQL (Neon recommended)
 - Tailwind CSS for styling
 - Vitest + tsx for tests and scripts
 

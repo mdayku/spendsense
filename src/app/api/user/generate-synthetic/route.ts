@@ -27,17 +27,22 @@ export async function POST(req: NextRequest) {
     
     const forceRegenerate = force || body.force === true;
 
-    // Check if user already has transactions
-    const existingTransactions = await prisma.transaction.findMany({
-      where: { userId },
-      take: 1,
-    });
+    // Check if user already has transactions (with retry logic)
+    const { retryDbOperation } = await import("@/lib/zz_prisma");
+    const existingTransactions = await retryDbOperation(() =>
+      prisma.transaction.findMany({
+        where: { userId },
+        take: 1,
+      })
+    );
 
-    // Check if profiles exist
-    const existingProfiles = await prisma.profile.findMany({
-      where: { userId },
-      take: 1,
-    });
+    // Check if profiles exist (with retry logic)
+    const existingProfiles = await retryDbOperation(() =>
+      prisma.profile.findMany({
+        where: { userId },
+        take: 1,
+      })
+    );
 
     // If force regenerate is requested, delete all existing data
     if (forceRegenerate && existingTransactions.length > 0) {

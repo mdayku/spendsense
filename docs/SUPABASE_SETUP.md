@@ -23,14 +23,18 @@ Supabase provides:
 
 ### 2. Get Connection String
 
+**Important:** For better reliability (especially with multiple projects on free tier), use the **direct connection** (Session mode) instead of the pooler.
+
 1. In your Supabase project dashboard
 2. Click **Settings** (gear icon) → **Database**
 3. Scroll to **Connection string** → **URI**
-4. Copy the connection string (looks like):
+4. **Make sure "Session" mode is selected** (not "Transaction" mode)
+5. Copy the connection string (looks like):
    ```
    postgresql://postgres:[YOUR-PASSWORD]@db.[PROJECT-REF].supabase.co:5432/postgres
    ```
-5. Replace `[YOUR-PASSWORD]` with your actual password
+   Note: Port **5432** = direct connection (more reliable). Port **6543** = pooler (can be intermittent on free tier).
+6. Replace `[YOUR-PASSWORD]` with your actual password
 
 ### 3. Update Local Environment
 
@@ -76,18 +80,22 @@ npm run seed
 
 The CI workflow will automatically use this for all jobs!
 
-## Connection Pooling (Optional but Recommended)
+## Connection Pooling (Optional)
 
-For production and CI, use Supabase's connection pooler:
+**For Free Tier:** Use **direct connection** (Session mode, port 5432) for better reliability. The pooler (port 6543) can be intermittent when you have multiple projects.
+
+**For Production/Paid Plans:** You can use the connection pooler for better performance:
 
 1. In Supabase dashboard → **Database** → **Connection string**
 2. Change mode from **Session** to **Transaction**
-3. Use the pooler connection string in CI (port 6543 instead of 5432)
+3. Use the pooler connection string (port 6543 instead of 5432)
 
 Example:
 ```
 postgresql://postgres:[PASSWORD]@db.[PROJECT-REF].supabase.co:6543/postgres?pgbouncer=true
 ```
+
+**Note:** If you're experiencing connection issues with multiple Supabase projects on free tier, stick with the direct connection (port 5432) for more consistent access.
 
 ## Local vs Production Databases
 
