@@ -196,15 +196,10 @@ function RecommendationCard({ item }: { item: any }) {
   return (
     <div className="border border-emerald-200 rounded-lg p-4 bg-emerald-50 hover:bg-emerald-100 transition-colors">
       <div className="flex items-start gap-3">
-        <div className="text-2xl">{icons[item.type] || "💡"}</div>
+        <div className="text-2xl">{icons[item.kind] || "💡"}</div>
         <div className="flex-1">
           <h3 className="font-bold text-emerald-900 mb-1">{item.title}</h3>
-          <p className="text-sm text-emerald-800 mb-2">{item.rationale}</p>
-          {item.because && (
-            <div className="text-xs bg-white rounded p-2 text-slate-700 border border-emerald-200">
-              <span className="font-semibold">Why this matters:</span> {item.because}
-            </div>
-          )}
+          <p className="text-sm text-emerald-800">{item.rationale}</p>
         </div>
       </div>
     </div>
