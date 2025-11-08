@@ -135,14 +135,12 @@ export default function DashboardPage() {
           >
             View Profile
           </Link>
-          {session.user?.role === "OPERATOR" && (
-            <Link
-              href="/operator"
-              className="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700"
-            >
-              Operator View
-            </Link>
-          )}
+          <Link
+            href="/operator"
+            className="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700"
+          >
+            Operator View
+          </Link>
         </div>
       </div>
 
@@ -176,24 +174,6 @@ export default function DashboardPage() {
               className="hidden"
             />
           </label>
-        </div>
-      </div>
-
-      <div className="p-6 rounded-xl bg-white shadow">
-        <h2 className="text-xl font-semibold mb-4">Quick Actions</h2>
-        <div className="space-y-2">
-          <Link
-            href={`/profiles/${session.user.id}`}
-            className="block px-4 py-2 bg-gray-100 rounded-md hover:bg-gray-200"
-          >
-            View My Financial Profile
-          </Link>
-          <Link
-            href={`/api/recommendations/${session.user.id}`}
-            className="block px-4 py-2 bg-gray-100 rounded-md hover:bg-gray-200"
-          >
-            Get Recommendations
-          </Link>
         </div>
       </div>
 

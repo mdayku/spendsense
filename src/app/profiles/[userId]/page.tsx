@@ -1,5 +1,20 @@
 "use client";
 import React from "react";
+import {
+  LineChart,
+  Line,
+  AreaChart,
+  Area,
+  PieChart,
+  Pie,
+  Cell,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  ResponsiveContainer,
+} from "recharts";
 
 export default function ProfileView({ params }: { params: { userId: string } }) {
   const { userId } = params;
@@ -7,6 +22,7 @@ export default function ProfileView({ params }: { params: { userId: string } }) 
   const [recs, setRecs] = React.useState<any>(null);
   const [alerts, setAlerts] = React.useState<{alerts30:string[];alerts180:string[]}>({alerts30:[],alerts180:[]});
   const [labels, setLabels] = React.useState<number>(0);
+  const [chartData, setChartData] = React.useState<any>(null);
 
   const [refreshing, setRefreshing] = React.useState(false);
   
@@ -45,10 +61,14 @@ export default function ProfileView({ params }: { params: { userId: string } }) 
       const lRes = await fetch(`/api/aml/labels/${userId}`);
       const l = lRes.ok ? await lRes.json() : { count: 0 };
       
+      const cRes = await fetch(`/api/profile/${userId}/charts`);
+      const c = cRes.ok ? await cRes.json() : null;
+      
       setProfileData(p); 
       setRecs(r); 
       setAlerts(a); 
       setLabels(l.count || 0);
+      setChartData(c);
     } catch (error: any) {
       console.error("Failed to load profile data:", error);
       alert(`Failed to load profile: ${error.message || "Unknown error"}`);
@@ -137,6 +157,98 @@ export default function ProfileView({ params }: { params: { userId: string } }) 
         <ProfileCard title="180-Day Profile" profile={p180} color="purple" />
       </div>
 
+      {/* Charts Section */}
+      {chartData && (
+        <div className="space-y-6">
+          <h2 className="text-2xl font-bold">📊 Financial Insights</h2>
+          
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Spending by Category */}
+            {chartData.spendingByCategory && chartData.spendingByCategory.length > 0 && (
+              <ChartCard title="Spending by Category">
+                <ResponsiveContainer width="100%" height={300}>
+                  <PieChart>
+                    <Pie
+                      data={chartData.spendingByCategory}
+                      cx="50%"
+                      cy="50%"
+                      labelLine={false}
+                      label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                      outerRadius={80}
+                      fill="#8884d8"
+                      dataKey="value"
+                    >
+                      {chartData.spendingByCategory.map((_: any, index: number) => (
+                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                      ))}
+                    </Pie>
+                    <Tooltip formatter={(value: number) => `$${value.toFixed(2)}`} />
+                  </PieChart>
+                </ResponsiveContainer>
+              </ChartCard>
+            )}
+
+            {/* Payment Channels */}
+            {chartData.paymentChannels && chartData.paymentChannels.length > 0 && (
+              <ChartCard title="Payment Channels">
+                <ResponsiveContainer width="100%" height={300}>
+                  <PieChart>
+                    <Pie
+                      data={chartData.paymentChannels}
+                      cx="50%"
+                      cy="50%"
+                      labelLine={false}
+                      label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                      outerRadius={80}
+                      fill="#8884d8"
+                      dataKey="value"
+                    >
+                      {chartData.paymentChannels.map((_: any, index: number) => (
+                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                      ))}
+                    </Pie>
+                    <Tooltip formatter={(value: number) => `$${value.toFixed(2)}`} />
+                  </PieChart>
+                </ResponsiveContainer>
+              </ChartCard>
+            )}
+          </div>
+
+          {/* Spending Over Time */}
+          {chartData.spendingOverTime && chartData.spendingOverTime.length > 0 && (
+            <ChartCard title="Spending Over Time">
+              <ResponsiveContainer width="100%" height={300}>
+                <LineChart data={chartData.spendingOverTime}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="date" />
+                  <YAxis />
+                  <Tooltip formatter={(value: number) => `$${value.toFixed(2)}`} />
+                  <Legend />
+                  <Line type="monotone" dataKey="amount" stroke="#8884d8" strokeWidth={2} name="Spending" />
+                </LineChart>
+              </ResponsiveContainer>
+            </ChartCard>
+          )}
+
+          {/* Income vs Expenses */}
+          {chartData.incomeVsExpenses && chartData.incomeVsExpenses.length > 0 && (
+            <ChartCard title="Income vs Expenses">
+              <ResponsiveContainer width="100%" height={300}>
+                <AreaChart data={chartData.incomeVsExpenses}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="date" />
+                  <YAxis />
+                  <Tooltip formatter={(value: number) => `$${value.toFixed(2)}`} />
+                  <Legend />
+                  <Area type="monotone" dataKey="income" stackId="1" stroke="#82ca9d" fill="#82ca9d" name="Income" />
+                  <Area type="monotone" dataKey="expenses" stackId="1" stroke="#ffc658" fill="#ffc658" name="Expenses" />
+                </AreaChart>
+              </ResponsiveContainer>
+            </ChartCard>
+          )}
+        </div>
+      )}
+
       {/* Recommendations */}
       <div className="bg-white rounded-xl shadow-md border border-slate-200 overflow-hidden">
         <div className="bg-gradient-to-r from-emerald-50 to-emerald-100 px-6 py-4 border-b border-emerald-200">
@@ -205,7 +317,7 @@ function ProfileCard({ title, profile, color }: { title: string; profile: any; c
 
         {/* Savings */}
         <MetricGroup title="💰 Savings & Emergency Fund" metrics={[
-          { label: "Net Savings Inflow", value: profile.netSavingsInflow.toFixed(0), unit: "$/mo", suffix: true },
+          { label: "Net Savings Inflow", value: profile.netSavingsInflow.toFixed(0), unit: "$", prefix: true, suffix: "/mo" },
           { label: "Savings Growth Rate", value: (profile.savingsGrowthRate * 100).toFixed(1), unit: "%", suffix: true },
           { label: "Emergency Coverage", value: profile.emergencyMonths.toFixed(2), unit: " months", suffix: true },
         ]} />
@@ -226,7 +338,7 @@ function ProfileCard({ title, profile, color }: { title: string; profile: any; c
   );
 }
 
-function MetricGroup({ title, metrics }: { title: string; metrics: Array<{label: string; value: any; unit: string; prefix?: boolean; suffix?: boolean}> }) {
+function MetricGroup({ title, metrics }: { title: string; metrics: Array<{label: string; value: any; unit: string; prefix?: boolean; suffix?: boolean | string}> }) {
   return (
     <div>
       <h3 className="text-sm font-semibold text-slate-700 mb-3">{title}</h3>
@@ -237,10 +349,25 @@ function MetricGroup({ title, metrics }: { title: string; metrics: Array<{label:
             <span className="font-bold text-slate-900">
               {m.prefix && m.unit}
               {m.value}
-              {m.suffix && m.unit}
+              {m.suffix && (typeof m.suffix === "string" ? m.suffix : m.unit)}
             </span>
           </div>
         ))}
+      </div>
+    </div>
+  );
+}
+
+const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8', '#82ca9d', '#ffc658', '#ff7300'];
+
+function ChartCard({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <div className="bg-white rounded-xl shadow-md border border-slate-200 overflow-hidden">
+      <div className="bg-gradient-to-r from-slate-50 to-slate-100 px-6 py-4 border-b border-slate-200">
+        <h3 className="text-lg font-bold text-slate-900">{title}</h3>
+      </div>
+      <div className="p-6">
+        {children}
       </div>
     </div>
   );

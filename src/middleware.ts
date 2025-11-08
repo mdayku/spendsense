@@ -1,18 +1,13 @@
 import { withAuth } from "next-auth/middleware";
 import { NextResponse } from "next/server";
-import { UserRole } from "@prisma/client";
 
 export default withAuth(
   function middleware(req) {
     const token = req.nextauth.token;
     const path = req.nextUrl.pathname;
 
-    // Protect operator routes - require OPERATOR role
-    if (path.startsWith("/operator")) {
-      if (token?.role !== UserRole.OPERATOR) {
-        return NextResponse.redirect(new URL("/dashboard", req.url));
-      }
-    }
+    // Operator routes are accessible to all authenticated users
+    // (role check removed for demo purposes)
 
     // Redirect authenticated users away from auth pages
     if ((path.startsWith("/auth/signin") || path.startsWith("/auth/signup")) && token) {
