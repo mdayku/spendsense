@@ -14,18 +14,20 @@ export async function POST(req: NextRequest) {
 
     const userId = session.user.id;
 
-    // Check for force parameter in query string or request body
+    // Check for force and includeAmlPatterns parameters in query string or request body
     const url = new URL(req.url);
     const force = url.searchParams.get("force") === "true";
+    const includeAml = url.searchParams.get("includeAml") === "true";
     
-    let body: { force?: boolean } = {};
+    let body: { force?: boolean; includeAmlPatterns?: boolean } = {};
     try {
-      body = await req.json() as { force?: boolean };
+      body = await req.json() as { force?: boolean; includeAmlPatterns?: boolean };
     } catch {
       // Body might be empty, that's fine
     }
     
     const forceRegenerate = force || body.force === true;
+    const includeAmlPatterns = includeAml || body.includeAmlPatterns === true;
 
     // Check if user already has transactions (with retry logic)
     const { retryDbOperation } = await import("@/lib/zz_prisma");
@@ -66,7 +68,7 @@ export async function POST(req: NextRequest) {
 
     // Generate synthetic transaction data for this user
     // This will create accounts if they don't exist, or use existing ones
-    await generateSingleUserData(userId);
+    await generateSingleUserData(userId, includeAmlPatterns);
 
     // Automatically compute profiles from the generated data
     const { computeSignals } = await import("@/lib/signals");

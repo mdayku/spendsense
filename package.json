@@ -9,6 +9,8 @@
     "seed": "tsx scripts/seed.ts",
     "eval": "tsx eval/run.ts",
     "import:ibm": "tsx scripts/import_ibm_aml.ts",
+    "analyze:aml": "tsx scripts/analyze-aml-patterns.ts",
+    "regenerate:all": "tsx scripts/regenerate-all-users.ts",
     "test": "vitest run"
   },
   "dependencies": {

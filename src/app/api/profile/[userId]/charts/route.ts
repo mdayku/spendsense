@@ -59,15 +59,18 @@ export async function GET(_: NextRequest, { params }: { params: { userId: string
       .sort((a, b) => a.date.localeCompare(b.date));
 
     // 3. Income vs Expenses Over Time (Area Chart) - Group by week
-    const incomeExpenseMap = new Map<string, { income: number; expenses: number }>();
+    const incomeExpenseMap = new Map<string, { income: number; expenses: number; net: number }>();
     transactions.forEach((tx: any) => {
       const date = new Date(tx.date);
       const weekKey = `${date.getFullYear()}-W${getWeekNumber(date)}`;
-      const current = incomeExpenseMap.get(weekKey) || { income: 0, expenses: 0 };
+      const current = incomeExpenseMap.get(weekKey) || { income: 0, expenses: 0, net: 0 };
       if (tx.amount > 0) {
         current.income += tx.amount;
+        current.net += tx.amount;
       } else {
-        current.expenses += Math.abs(tx.amount);
+        const expenseAmount = Math.abs(tx.amount);
+        current.expenses += expenseAmount;
+        current.net -= expenseAmount; // Subtract expenses from net
       }
       incomeExpenseMap.set(weekKey, current);
     });
@@ -76,6 +79,7 @@ export async function GET(_: NextRequest, { params }: { params: { userId: string
         date,
         income: Math.round(data.income * 100) / 100,
         expenses: Math.round(data.expenses * 100) / 100,
+        net: Math.round(data.net * 100) / 100,
       }))
       .sort((a, b) => a.date.localeCompare(b.date));
 

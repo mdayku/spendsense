@@ -83,12 +83,22 @@ OPENAI_API_KEY="sk-..."
 - **AI:** "Set up autopay to stop missing payments and save $84/month"
 
 ## Using the IBM AML Kaggle dataset
-1. Download CSVs and place them under `data/ibm_aml/` (e.g., `HI-Small_Trans.csv`).
-2. Run `npm run import:ibm` to stream‑import into Supabase. Use `IMPORT_LIMIT=100000 npm run import:ibm` to cap rows.
-3. Hit `/api/profile/:userId` for any imported entity (email looks like `ENTITYID@aml.local`).
-4. Run `npm run eval` to regenerate metrics after import.
+
+**Recommended: Pattern Analysis (No Import)**
+
+1. Download files (CSV or TXT format) and place them under `data/ibm_aml/` (e.g., `HI-Small_Trans.txt` or `HI-Small_Trans.csv`).
+2. Run `npm run analyze:aml` to analyze patterns WITHOUT importing transactions. Use `IMPORT_LIMIT=100000 npm run analyze:aml` to cap rows.
+3. Patterns are saved to `data/aml-patterns.json` and automatically used when generating synthetic data with "Include AML-like patterns" enabled.
+
+**Optional: Full Import**
+
+If you want to import actual transactions for testing:
+- Run `npm run import:ibm` to stream‑import into your database.
+- Hit `/api/profile/:userId` for any imported entity (email looks like `ENTITYID@aml.local`).
+- Run `npm run eval` to regenerate metrics after import.
 
 **Notes**
+- Pattern analysis learns from IBM data but generates NEW synthetic transactions (not copies).
 - IBM AML is synthetic; we map originator→user and beneficiary→counterparty; transactions are `transfer`.
 - Subscriptions/income signals may be sparse; keep the default synthetic seed for consumer-style A/B.
 - Import may take a few minutes for large datasets due to database round-trips.

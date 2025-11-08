@@ -6,6 +6,10 @@ type Item = { id: string; reason: string; createdAt: string; User: { name: strin
 export default function Operator() {
   const [items, setItems] = React.useState<Item[]>([]);
   const [loading, setLoading] = React.useState(false);
+  const [activeTab, setActiveTab] = React.useState<"queue" | "users">("queue");
+  const [users, setUsers] = React.useState<any[]>([]);
+  const [usersLoading, setUsersLoading] = React.useState(false);
+  const [searchQuery, setSearchQuery] = React.useState("");
 
   const load = async () => {
     setLoading(true);
@@ -14,7 +18,24 @@ export default function Operator() {
     setItems(data.queue || []);
     setLoading(false);
   };
-  React.useEffect(()=>{ load(); },[]);
+
+  const loadUsers = async (query = "") => {
+    setUsersLoading(true);
+    const res = await fetch(`/api/users${query ? `?q=${encodeURIComponent(query)}` : ""}`);
+    const data = await res.json();
+    setUsers(data.users || []);
+    setUsersLoading(false);
+  };
+
+  React.useEffect(() => {
+    load();
+  }, []);
+
+  React.useEffect(() => {
+    if (activeTab === "users") {
+      loadUsers(searchQuery);
+    }
+  }, [activeTab, searchQuery]);
 
   const decide = async (id: string, action: "approve" | "override") => {
     await fetch("/api/operator/review", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id, action }) });
@@ -25,31 +46,148 @@ export default function Operator() {
     <main className="max-w-7xl mx-auto p-6 space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold">Operator Review Queue</h1>
-          <p className="text-slate-600 mt-1">Approve or override items that require human oversight</p>
+          <h1 className="text-3xl font-bold">Operator Dashboard</h1>
+          <p className="text-slate-600 mt-1">Review queue and manage users</p>
         </div>
-        <button 
-          className="px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50" 
-          onClick={load} 
-          disabled={loading}
-        >
-          {loading ? "⟳ Loading..." : "↻ Refresh"}
-        </button>
+        <div className="flex gap-2">
+          {activeTab === "queue" && (
+            <button 
+              className="px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50" 
+              onClick={load} 
+              disabled={loading}
+            >
+              {loading ? "⟳ Loading..." : "↻ Refresh"}
+            </button>
+          )}
+          {activeTab === "users" && (
+            <button 
+              className="px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50" 
+              onClick={() => loadUsers(searchQuery)} 
+              disabled={usersLoading}
+            >
+              {usersLoading ? "⟳ Loading..." : "↻ Refresh"}
+            </button>
+          )}
+        </div>
       </div>
 
-      {items.length === 0 && (
-        <div className="text-center py-12 bg-slate-50 rounded-xl">
-          <div className="text-6xl mb-4">✓</div>
-          <div className="text-xl font-semibold text-slate-700">Queue is Empty</div>
-          <div className="text-slate-500 mt-1">All review items have been processed</div>
-        </div>
+      {/* Tabs */}
+      <div className="border-b border-slate-200">
+        <nav className="flex gap-4">
+          <button
+            onClick={() => setActiveTab("queue")}
+            className={`px-4 py-2 font-medium border-b-2 transition-colors ${
+              activeTab === "queue"
+                ? "border-blue-600 text-blue-600"
+                : "border-transparent text-slate-600 hover:text-slate-900"
+            }`}
+          >
+            Review Queue
+          </button>
+          <button
+            onClick={() => setActiveTab("users")}
+            className={`px-4 py-2 font-medium border-b-2 transition-colors ${
+              activeTab === "users"
+                ? "border-blue-600 text-blue-600"
+                : "border-transparent text-slate-600 hover:text-slate-900"
+            }`}
+          >
+            All Users
+          </button>
+        </nav>
+      </div>
+
+      {/* Review Queue Tab */}
+      {activeTab === "queue" && (
+        <>
+          {items.length === 0 && (
+            <div className="text-center py-12 bg-slate-50 rounded-xl">
+              <div className="text-6xl mb-4">✓</div>
+              <div className="text-xl font-semibold text-slate-700">Queue is Empty</div>
+              <div className="text-slate-500 mt-1">All review items have been processed</div>
+            </div>
+          )}
+
+          <div className="space-y-4">
+            {items.map(it => (
+              <ReviewItem key={it.id} item={it} onDecide={decide} />
+            ))}
+          </div>
+        </>
       )}
 
-      <div className="space-y-4">
-        {items.map(it => (
-          <ReviewItem key={it.id} item={it} onDecide={decide} />
-        ))}
-      </div>
+      {/* Users Tab */}
+      {activeTab === "users" && (
+        <>
+          <div className="flex gap-2 mb-4">
+            <input
+              className="flex-1 border rounded-lg px-4 py-2"
+              placeholder="Search by name or email..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
+          </div>
+
+          {users.length === 0 && !usersLoading && (
+            <div className="text-center py-12 bg-slate-50 rounded-xl">
+              <div className="text-4xl mb-4">👥</div>
+              <div className="text-xl font-semibold text-slate-700">No Users Found</div>
+              <div className="text-slate-500 mt-1">
+                {searchQuery ? "Try a different search term" : "No users in the system"}
+              </div>
+            </div>
+          )}
+
+          <div className="bg-white rounded-xl shadow-md border border-slate-200 overflow-hidden">
+            <div className="divide-y divide-slate-200">
+              {users.map((user: any) => (
+                <div key={user.id} className="p-4 hover:bg-slate-50 transition-colors">
+                  <div className="flex items-center justify-between">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2">
+                        <div className="font-medium text-slate-900">{user.name}</div>
+                        {user.amlSeverity === "red" && (
+                          <span className="text-red-600 text-lg" title={user.amlWarning || "AML/Fraud alert">
+                            🔴
+                          </span>
+                        )}
+                        {user.amlSeverity === "yellow" && (
+                          <span className="text-yellow-600 text-lg" title={user.amlWarning || "Potential AML pattern detected"}>
+                            ⚠️
+                          </span>
+                        )}
+                      </div>
+                      <div className="text-sm text-slate-600">{user.email}</div>
+                      <div className="flex items-center gap-3 mt-1">
+                        <div className="text-xs text-slate-500">
+                          Joined {new Date(user.createdAt).toLocaleDateString()}
+                        </div>
+                        {user.amlWarning && (
+                          <div className={`text-xs px-2 py-0.5 rounded ${
+                            user.amlSeverity === "red" 
+                              ? "bg-red-100 text-red-700" 
+                              : "bg-yellow-100 text-yellow-700"
+                          }`}>
+                            {user.amlWarning}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex gap-2">
+                      <a
+                        href={`/profiles/${user.id}`}
+                        className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                      >
+                        View Profile
+                      </a>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </>
+      )}
     </main>
   );
 }

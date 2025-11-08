@@ -1,0 +1,73 @@
+{
+  "highVolumeTransfers": {
+    "enabled": true,
+    "avgTransfersPerCounterparty": 68.13553299492386,
+    "avgAmountRange": {
+      "min": 0.09,
+      "max": 5257958937816.24
+    },
+    "commonCounterparties": [
+      "020",
+      "000",
+      "011",
+      "012",
+      "003",
+      "027",
+      "014",
+      "006",
+      "00214",
+      "001",
+      "0272142",
+      "02310",
+      "01213",
+      "01208",
+      "029",
+      "01226",
+      "00718",
+      "01601",
+      "0293268",
+      "02597"
+    ],
+    "typicalFrequency": 0.5879923221546848
+  },
+  "rapidInOut": {
+    "enabled": true,
+    "avgSameDayCount": 27.139336181399933,
+    "avgInflowAmount": 131948765.98395689,
+    "avgOutflowAmount": 131948765.98395689,
+    "typicalTimeGapHours": 4.162648096005472
+  },
+  "structuring": {
+    "enabled": true,
+    "commonThresholds": [
+      10000,
+      5000,
+      3000,
+      1000
+    ],
+    "avgAmountJustBelow": 6705.628770662956,
+    "typicalAmountRange": {
+      "min": 900.04,
+      "max": 9999.97
+    }
+  },
+  "frequentSmallTransfers": {
+    "enabled": true,
+    "avgFrequency": 1.0525126065032169,
+    "avgAmount": 527.8578468670074,
+    "amountRange": {
+      "min": 0.023607,
+      "max": 999.59
+    }
+  },
+  "generalStats": {
+    "totalTransactions": 137936,
+    "uniqueEntities": 3043,
+    "dateRange": {
+      "start": "2022-08-01T05:08:00.000Z",
+      "end": "2023-01-12T22:49:00.000Z"
+    },
+    "avgTransactionAmount": 79000325.06948876,
+    "flaggedTransactionRate": 1
+  }
+}

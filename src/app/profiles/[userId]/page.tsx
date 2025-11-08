@@ -5,6 +5,7 @@ import {
   Line,
   AreaChart,
   Area,
+  ComposedChart,
   PieChart,
   Pie,
   Cell,
@@ -220,7 +221,21 @@ export default function ProfileView({ params }: { params: { userId: string } }) 
               <ResponsiveContainer width="100%" height={300}>
                 <LineChart data={chartData.spendingOverTime}>
                   <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="date" />
+                  <XAxis 
+                    dataKey="date" 
+                    angle={-45}
+                    textAnchor="end"
+                    height={80}
+                    interval={0}
+                    tick={{ fontSize: 10 }}
+                    tickFormatter={(value) => {
+                      // Format "2024-W15" to "W15" or "Week 15"
+                      if (typeof value === 'string' && value.includes('-W')) {
+                        return value.split('-W')[1] ? `W${value.split('-W')[1]}` : value;
+                      }
+                      return value;
+                    }}
+                  />
                   <YAxis />
                   <Tooltip formatter={(value: number) => `$${value.toFixed(2)}`} />
                   <Legend />
@@ -232,19 +247,29 @@ export default function ProfileView({ params }: { params: { userId: string } }) 
 
           {/* Income vs Expenses */}
           {chartData.incomeVsExpenses && chartData.incomeVsExpenses.length > 0 && (
-            <ChartCard title="Income vs Expenses">
-              <ResponsiveContainer width="100%" height={300}>
-                <AreaChart data={chartData.incomeVsExpenses}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="date" />
-                  <YAxis />
-                  <Tooltip formatter={(value: number) => `$${value.toFixed(2)}`} />
-                  <Legend />
-                  <Area type="monotone" dataKey="income" stackId="1" stroke="#82ca9d" fill="#82ca9d" name="Income" />
-                  <Area type="monotone" dataKey="expenses" stackId="1" stroke="#ffc658" fill="#ffc658" name="Expenses" />
-                </AreaChart>
-              </ResponsiveContainer>
-            </ChartCard>
+            <>
+              <ChartCard title="Income vs Expenses">
+                <ResponsiveContainer width="100%" height={300}>
+                  <ComposedChart data={chartData.incomeVsExpenses}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis 
+                      dataKey="date" 
+                      angle={-45}
+                      textAnchor="end"
+                      height={80}
+                      interval={0}
+                      tick={{ fontSize: 10 }}
+                    />
+                    <YAxis />
+                    <Tooltip formatter={(value: number) => `$${value.toFixed(2)}`} />
+                    <Legend />
+                    <Area type="monotone" dataKey="income" stroke="#82ca9d" fill="#82ca9d" fillOpacity={0.6} name="Income" />
+                    <Area type="monotone" dataKey="expenses" stroke="#ffc658" fill="#ffc658" fillOpacity={0.6} name="Expenses" />
+                    <Line type="monotone" dataKey="net" stroke="#8884d8" strokeWidth={2} name="Net Cash Flow" />
+                  </ComposedChart>
+                </ResponsiveContainer>
+              </ChartCard>
+            </>
           )}
         </div>
       )}
@@ -338,21 +363,49 @@ function ProfileCard({ title, profile, color }: { title: string; profile: any; c
   );
 }
 
-function MetricGroup({ title, metrics }: { title: string; metrics: Array<{label: string; value: any; unit: string; prefix?: boolean; suffix?: boolean | string}> }) {
+const METRIC_DEFINITIONS: Record<string, string> = {
+  "Active Subscriptions": "Number of merchants you pay regularly (monthly or weekly). These are detected by analyzing recurring payment patterns.",
+  "Monthly Recurring": "Total amount you spend each month on subscription services and recurring payments.",
+  "Share of Spending": "Percentage of your total spending that goes toward subscriptions and recurring payments.",
+  "Net Savings Inflow": "Average amount of money flowing into your savings accounts each month (deposits minus withdrawals).",
+  "Savings Growth Rate": "How fast your savings are growing compared to the previous period. Positive means you're saving more, negative means you're withdrawing more.",
+  "Emergency Coverage": "How many months you could cover your expenses using only your savings account balance. Higher is better for financial security.",
+  "Max Utilization": "The highest percentage of your credit limit that you've used across all credit cards. Lower is better for your credit score.",
+  "Utilization Flags": "Warnings if your credit utilization is high (≥30%, ≥50%, or ≥80%). High utilization can hurt your credit score.",
+  "Median Income Gap": "Average number of days between your paychecks. Higher gaps indicate more variable or irregular income.",
+  "Cash Flow Buffer": "How many months of expenses you could cover with your current cash and savings. Similar to emergency coverage but includes checking accounts.",
+};
+
+function MetricGroup({ title, metrics }: { title: string; metrics: Array<{label: string; value: any; unit: string; prefix?: boolean; suffix?: boolean | string; tooltip?: string}> }) {
   return (
     <div>
       <h3 className="text-sm font-semibold text-slate-700 mb-3">{title}</h3>
       <div className="grid grid-cols-1 gap-3">
-        {metrics.map((m, i) => (
-          <div key={i} className="flex justify-between items-baseline bg-slate-50 rounded-lg px-3 py-2">
-            <span className="text-sm text-slate-600">{m.label}</span>
-            <span className="font-bold text-slate-900">
-              {m.prefix && m.unit}
-              {m.value}
-              {m.suffix && (typeof m.suffix === "string" ? m.suffix : m.unit)}
-            </span>
-          </div>
-        ))}
+        {metrics.map((m, i) => {
+          const tooltip = m.tooltip || METRIC_DEFINITIONS[m.label] || "";
+          return (
+            <div 
+              key={i} 
+              className="flex justify-between items-baseline bg-slate-50 rounded-lg px-3 py-2 hover:bg-slate-100 transition-colors cursor-help group relative"
+              title={tooltip}
+            >
+              <span className="text-sm text-slate-600 group-hover:text-slate-800">
+                {m.label}
+                {tooltip && <span className="ml-1 text-xs text-slate-400">ℹ️</span>}
+              </span>
+              <span className="font-bold text-slate-900">
+                {m.prefix && m.unit}
+                {m.value}
+                {m.suffix && (typeof m.suffix === "string" ? m.suffix : m.unit)}
+              </span>
+              {tooltip && (
+                <div className="absolute left-0 top-full mt-1 w-64 p-2 bg-slate-800 text-white text-xs rounded shadow-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10">
+                  {tooltip}
+                </div>
+              )}
+            </div>
+          );
+        })}
       </div>
     </div>
   );

@@ -11,6 +11,7 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
+  const [includeAmlPatterns, setIncludeAmlPatterns] = useState(false);
 
   useEffect(() => {
     if (status === "unauthenticated") {
@@ -33,10 +34,14 @@ export default function DashboardPage() {
   const handleGenerateSynthetic = async (force: boolean = false) => {
     setLoading(true);
     try {
-      const res = await fetch(`/api/user/generate-synthetic${force ? "?force=true" : ""}`, {
+      const queryParams = new URLSearchParams();
+      if (force) queryParams.set("force", "true");
+      if (includeAmlPatterns) queryParams.set("includeAml", "true");
+      
+      const res = await fetch(`/api/user/generate-synthetic${queryParams.toString() ? `?${queryParams.toString()}` : ""}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ force }),
+        body: JSON.stringify({ force, includeAmlPatterns }),
       });
 
       if (!res.ok) {
@@ -150,6 +155,22 @@ export default function DashboardPage() {
           <p className="text-sm text-gray-600 mb-4 flex-grow">
             Get started instantly with synthetic transaction data to explore SpendSense features.
           </p>
+          <div className="mb-4">
+            <label className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={includeAmlPatterns}
+                onChange={(e) => setIncludeAmlPatterns(e.target.checked)}
+                className="rounded border-gray-300"
+              />
+              <span>
+                Include AML-like patterns{" "}
+                <span className="text-xs text-gray-500">
+                  (learns from IBM AML dataset if available)
+                </span>
+              </span>
+            </label>
+          </div>
           <button
             onClick={() => handleGenerateSynthetic(false)}
             disabled={loading}
