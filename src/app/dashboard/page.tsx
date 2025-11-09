@@ -166,7 +166,7 @@ export default function DashboardPage() {
               <span>
                 Include AML-like patterns{" "}
                 <span className="text-xs text-gray-500">
-                  (learns from IBM AML dataset if available)
+                  (learns from IBM AML dataset)
                 </span>
               </span>
             </label>
