@@ -13,6 +13,9 @@ export async function computeSignals(userId: string, windowDays: 30 | 180) {
   const expenses = tx.filter((t: { amount: number }) => t.amount < 0);
   const totalSpend = Math.abs(expenses.reduce((s: number, t: { amount: number }) => s + t.amount, 0));
 
+  // Count subscriptions in two ways:
+  // 1. Pattern-based: recurring transactions to same merchant (strict)
+  // 2. Category-based: transactions explicitly marked as "subscription"
   const byMerchant = new Map<string, Date[]>();
   for (const t of expenses) {
     const key = t.merchant || t.merchantEntityId || "unknown";
@@ -21,17 +24,45 @@ export async function computeSignals(userId: string, windowDays: 30 | 180) {
   }
   let recurringCount = 0;
   let monthlyRecurringUSD = 0;
+  const patternBasedMerchants = new Set<string>();
+  
   for (const [m, dates] of byMerchant) {
     const sorted = dates.sort((a: Date, b: Date) => a.getTime() - b.getTime());
     const gaps = sorted.slice(1).map((d: Date, i: number) => (d.getTime() - sorted[i].getTime()) / (1000*3600*24));
     const avgGap = gaps.length ? gaps.reduce((s: number, g: number) => s + g, 0) / gaps.length : Infinity;
     if (sorted.length >= 3 && (avgGap > 20 && avgGap < 40 || avgGap > 6 && avgGap < 9)) {
       recurringCount++;
+      patternBasedMerchants.add(m);
       const spend = expenses.filter((t: { merchant?: string; merchantEntityId?: string }) => (t.merchant||t.merchantEntityId||"unknown")===m)
                             .reduce((s: number, t: { amount: number }) => s + Math.abs(t.amount), 0);
       monthlyRecurringUSD += spend / Math.max(1, windowDays/30);
     }
   }
+  
+  // Also count transactions explicitly categorized as "subscription" that weren't already counted
+  const subscriptionTx = expenses.filter((t: { pfcPrimary?: string; merchant?: string; merchantEntityId?: string }) => {
+    if (t.pfcPrimary === "subscription") {
+      const key = t.merchant || t.merchantEntityId || "unknown";
+      // Only count if not already counted via pattern detection
+      return !patternBasedMerchants.has(key);
+    }
+    return false;
+  });
+  
+  // Count unique subscription merchants (category-based)
+  const categoryBasedMerchants = new Set<string>();
+  subscriptionTx.forEach((t: { merchant?: string; merchantEntityId?: string }) => {
+    const key = t.merchant || t.merchantEntityId || "unknown";
+    categoryBasedMerchants.add(key);
+  });
+  
+  // Add category-based subscriptions to count
+  recurringCount += categoryBasedMerchants.size;
+  
+  // Add category-based subscription spending
+  const categoryBasedSpending = subscriptionTx.reduce((s: number, t: { amount: number }) => s + Math.abs(t.amount), 0);
+  monthlyRecurringUSD += categoryBasedSpending / Math.max(1, windowDays/30);
+  
   const subscriptionShare = totalSpend ? monthlyRecurringUSD / (totalSpend / Math.max(1, windowDays/30)) : 0;
 
   const savingsAcctIds = accts.filter((a: { type: string }) => ["savings","money_market","hsa"].includes(a.type))
