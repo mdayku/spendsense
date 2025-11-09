@@ -11,6 +11,7 @@
     "import:ibm": "tsx scripts/import_ibm_aml.ts",
     "analyze:aml": "tsx scripts/analyze-aml-patterns.ts",
     "regenerate:all": "tsx scripts/regenerate-all-users.ts",
+    "recompute:profiles": "tsx scripts/recompute-profiles.ts",
     "test": "vitest run"
   },
   "dependencies": {
