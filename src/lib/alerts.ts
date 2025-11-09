@@ -30,10 +30,10 @@ export function amlEducationalAlerts(tx: Transaction[], windowDays: number) {
   }
   let sameDayCount = 0;
   inflowsByDay.forEach((v,d)=>{ if ((outflowsByDay.get(d)||0) > 0) sameDayCount++; });
-  if (sameDayCount >= 8) alerts.push(`${sameDayCount} days with same‑day in/out flows (educational alert).`);
+  if (sameDayCount >= 8) alerts.push(`${sameDayCount} days with same‑day in/out flows.`);
 
   return alerts;
 }
 
-export const AML_EDU_DISCLOSURE = "Educational alert: potential AML‑like pattern detected. This is not a determination of wrongdoing, nor legal or financial advice.";
+export const AML_EDU_DISCLOSURE = "Potential AML‑like pattern detected. This is not a determination of wrongdoing, nor legal or financial advice.";
 

@@ -107,7 +107,7 @@ async function main() {
             data: {
               userId,
               profileId: profile.id,
-              reason: `aml_alerts: ${eduAlerts.join(" | ")}`,
+              reason: eduAlerts.join(" | "),
             },
           });
         }

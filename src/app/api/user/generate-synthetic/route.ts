@@ -133,7 +133,7 @@ export async function POST(req: NextRequest) {
           data: {
             userId,
             profileId: profile.id,
-            reason: `aml_alerts: ${eduAlerts.join(" | ")}`,
+            reason: eduAlerts.join(" | "),
           },
         });
       }

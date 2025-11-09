@@ -18,6 +18,7 @@ export async function requireAuth() {
 
 /**
  * Verify user can access a resource (either owns it or is an operator)
+ * Note: For demo purposes, all authenticated users can access any profile (operator mode is open to all)
  */
 export async function verifyAccess(userId: string) {
   const session = await requireAuth();
@@ -27,11 +28,14 @@ export async function verifyAccess(userId: string) {
     return true;
   }
   
-  // Users can only access their own resources
-  if (session.user.id !== userId) {
-    throw new Error("Forbidden");
-  }
+  // For demo: All authenticated users can access any profile (operator mode is open to all)
+  // This allows any logged-in user to view any user's profile, which is needed for operator mode
+  // In production, you'd want to restrict this:
+  // if (session.user.id !== userId) {
+  //   throw new Error("Forbidden");
+  // }
   
+  // Allow all authenticated users to access any profile
   return true;
 }
 

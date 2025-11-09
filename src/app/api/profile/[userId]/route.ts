@@ -157,7 +157,7 @@ export async function POST(req: NextRequest, { params }: { params: { userId: str
           data: {
             userId,
             profileId: profile.id,
-            reason: eduAlerts.length ? `aml_alerts: ${eduAlerts.join(" | ")}` : "persona_change",
+            reason: eduAlerts.length ? eduAlerts.join(" | ") : "persona_change",
           }
         });
       }

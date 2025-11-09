@@ -232,8 +232,8 @@ function ReviewItem({ item, onDecide }: { item: Item; onDecide: (id: string, act
 
       {/* Reason */}
       <div className="px-6 py-4 bg-amber-50 border-b border-amber-200">
-        <div className="text-xs font-semibold text-amber-900 uppercase tracking-wide mb-1">Review Reason</div>
-        <div className="text-sm text-amber-800">{item.reason}</div>
+        <div className="text-xs font-semibold text-amber-900 uppercase tracking-wide mb-1">AML Alert</div>
+        <div className="text-sm text-amber-800">{item.reason.replace(/^aml_alerts:\s*/i, '')}</div>
       </div>
 
       {/* Decision Trace */}
@@ -275,6 +275,9 @@ function ReviewItem({ item, onDecide }: { item: Item; onDecide: (id: string, act
 }
 
 function DecisionTraceView({ trace }: { trace: any }) {
+  const [prettifiedReason, setPrettifiedReason] = React.useState<string | null>(null);
+  const [loadingReason, setLoadingReason] = React.useState(false);
+
   if (trace.error) {
     return <pre className="text-xs bg-slate-100 p-4 rounded overflow-auto">{trace.raw}</pre>;
   }
@@ -285,6 +288,52 @@ function DecisionTraceView({ trace }: { trace: any }) {
   
   // Handle old format where signals might be nested under 's'
   const signals = trace.signals || trace.s;
+
+  // Prettify persona assignment text using OpenAI
+  React.useEffect(() => {
+    if (personaKey && signals && !prettifiedReason && !loadingReason) {
+      setLoadingReason(true);
+      const signalText = Object.entries(signals)
+        .filter(([key, value]) => value !== null && value !== undefined && value !== 0 && value !== false && key !== 'utilFlags')
+        .map(([key, value]) => {
+          if (typeof value === 'boolean') {
+            return value ? key : `!${key}`;
+          }
+          if (typeof value === 'number') {
+            if (key.includes('Percent') || key.includes('Rate') || key.includes('Share')) {
+              return `${key}=${(value * 100).toFixed(0)}%`;
+            }
+            if (key.includes('Max') || key.includes('util')) {
+              return `${key}=${(value * 100).toFixed(0)}%`;
+            }
+            return `${key}=${value}`;
+          }
+          return `${key}=${value}`;
+        })
+        .join(', ');
+
+      fetch('/api/openai/prettify-persona', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          persona: personaKey,
+          signals: signalText,
+        }),
+      })
+        .then(res => res.json())
+        .then(data => {
+          if (data.prettified) {
+            setPrettifiedReason(data.prettified);
+          }
+        })
+        .catch(err => {
+          console.error('Failed to prettify persona:', err);
+        })
+        .finally(() => {
+          setLoadingReason(false);
+        });
+    }
+  }, [personaKey, signals, prettifiedReason, loadingReason]);
 
   return (
     <div className="space-y-4">
@@ -312,21 +361,34 @@ function DecisionTraceView({ trace }: { trace: any }) {
         <div className="bg-purple-50 rounded-lg p-4">
           <h4 className="font-semibold text-purple-900 mb-2">Persona Assignment</h4>
           <div className="text-2xl font-bold text-purple-700 uppercase mb-2">{personaKey}</div>
-          {personaReason && (
+          {loadingReason ? (
+            <div className="text-sm text-purple-600 bg-white rounded p-2">Generating explanation...</div>
+          ) : prettifiedReason ? (
+            <div className="text-sm text-purple-800 bg-white rounded p-2">{prettifiedReason}</div>
+          ) : personaReason ? (
             <div className="text-sm text-purple-800 bg-white rounded p-2">{personaReason}</div>
-          )}
+          ) : signals ? (
+            <div className="text-sm text-purple-600 bg-white rounded p-2">
+              {Object.entries(signals)
+                .filter(([key, value]) => value !== null && value !== undefined && value !== 0 && value !== false && key !== 'utilFlags')
+                .map(([key, value]) => {
+                  if (typeof value === 'boolean') {
+                    return value ? key : `!${key}`;
+                  }
+                  if (typeof value === 'number') {
+                    if (key.includes('Percent') || key.includes('Rate') || key.includes('Share') || key.includes('Max') || key.includes('util')) {
+                      return `${key}=${(value * 100).toFixed(0)}%`;
+                    }
+                    return `${key}=${value}`;
+                  }
+                  return `${key}=${value}`;
+                })
+                .join(', ')}
+            </div>
+          ) : null}
         </div>
       )}
 
-      {/* Full JSON (collapsible) */}
-      <details className="bg-slate-100 rounded-lg">
-        <summary className="px-4 py-2 cursor-pointer text-sm font-medium text-slate-700 hover:bg-slate-200 rounded-lg">
-          View Raw JSON
-        </summary>
-        <pre className="text-xs p-4 overflow-auto max-h-96 border-t border-slate-200">
-          {JSON.stringify(trace, null, 2)}
-        </pre>
-      </details>
     </div>
   );
 }
