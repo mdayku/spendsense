@@ -2,30 +2,6 @@ import { prisma } from "@/lib/zz_prisma";
 import { THRESHOLDS } from "@/lib/rules";
 import dayjs from "dayjs";
 
-/**
- * Check if a transaction is an AML-like transfer (suspicious pattern)
- * These should be excluded from expense calculations for metrics
- */
-function isAmlLikeTransfer(t: { pfcPrimary?: string; merchant?: string | null; merchantEntityId?: string | null }): boolean {
-  if (t.pfcPrimary !== "transfer") return false;
-  
-  const merchant = (t.merchant || "").toLowerCase();
-  const entityId = (t.merchantEntityId || "").toLowerCase();
-  
-  // AML patterns typically have:
-  // - "Transfer-" prefix with numbers
-  // - "Entity-" prefix with numbers
-  // - "Incoming Transfer" (though these are usually positive)
-  // - Generic transfer patterns
-  return (
-    merchant.startsWith("transfer-") ||
-    merchant.startsWith("entity-") ||
-    merchant === "incoming transfer" ||
-    entityId.startsWith("entity-") ||
-    entityId.startsWith("transfer-")
-  );
-}
-
 export async function computeSignals(userId: string, windowDays: 30 | 180) {
   const since = dayjs().subtract(windowDays, "day").toDate();
   const [tx, accts, liabs] = await Promise.all([
@@ -34,11 +10,7 @@ export async function computeSignals(userId: string, windowDays: 30 | 180) {
     prisma.liability.findMany({ where: { userId } }),
   ]);
 
-  // Filter expenses, excluding AML-like transfers from expense calculations
-  // (AML transfers are legitimate transactions but shouldn't inflate spending metrics)
-  const expenses = tx.filter((t: { amount: number; pfcPrimary?: string; merchant?: string | null; merchantEntityId?: string | null }) => 
-    t.amount < 0 && !isAmlLikeTransfer(t)
-  );
+  const expenses = tx.filter((t: { amount: number }) => t.amount < 0);
   const totalSpend = Math.abs(expenses.reduce((s: number, t: { amount: number }) => s + t.amount, 0));
 
   // Count subscriptions in two ways:

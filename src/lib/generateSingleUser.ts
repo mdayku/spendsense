@@ -229,6 +229,39 @@ export async function generateSingleUserData(userId: string, includeAmlPatterns:
     }
   }
 
+  // Sanity check: Ensure there's at least some income (realistic minimum)
+  // Expenses can exceed income (showing up as credit utilization, negative cash flow, etc.)
+  // But we need at least some income to make the profile realistic
+  const totalIncome = transactions
+    .filter((t: { amount: number; pfcPrimary?: string }) => t.amount > 0 && t.pfcPrimary === "income")
+    .reduce((sum: number, t: { amount: number }) => sum + t.amount, 0);
+  
+  // Minimum income threshold: at least $2000/month ($1000 per bi-weekly paycheck)
+  // If AML patterns drove expenses way up but there's no income, add minimal income
+  const minMonthlyIncome = 2000;
+  const minTotalIncome = (minMonthlyIncome / 2) * 6; // 6 bi-weekly paychecks over 90 days = ~$6000 minimum
+  
+  if (totalIncome < minTotalIncome) {
+    // Add enough income to meet minimum threshold
+    const incomeNeeded = minTotalIncome - totalIncome;
+    const numAdditionalPaychecks = Math.ceil(incomeNeeded / (minMonthlyIncome / 2));
+    const additionalBiweeklyAmount = incomeNeeded / numAdditionalPaychecks;
+    
+    for (let i = 0; i < numAdditionalPaychecks; i++) {
+      const daysAgo = Math.floor(Math.random() * 90);
+      transactions.push({
+        userId,
+        accountId: checkingId,
+        date: today.subtract(daysAgo, "day").toDate(),
+        amount: amount(additionalBiweeklyAmount),
+        merchant: "Payroll Direct Deposit",
+        paymentChannel: Channel.online,
+        pfcPrimary: PFCPrimary.income,
+        pending: false,
+      });
+    }
+  }
+
   // Insert transactions in chunks
   const chunkSize = 1000;
   for (let i = 0; i < transactions.length; i += chunkSize) {
@@ -247,13 +280,17 @@ async function generateAmlPatternTransactions(
   today: dayjs.Dayjs,
   patterns: any
 ) {
-  // Pattern 1: High-volume transfers to single counterparty
-  if (patterns.highVolumeTransfers.enabled && Math.random() > 0.5) {
+  // Generate AML patterns more subtly - only 1-2 patterns per user, reduced volume
+  // Spread over 90 days to mix with normal transactions, not concentrated in 30 days
+  const patternRoll = Math.random();
+  
+  // Pattern 1: High-volume transfers to single counterparty (10-15 transfers over 90 days)
+  if (patterns.highVolumeTransfers.enabled && patternRoll < 0.4) {
     const counterparty = pick(patterns.highVolumeTransfers.commonCounterparties) || `Entity-${Math.floor(Math.random() * 10000)}`;
-    const numTransfers = Math.floor(patterns.highVolumeTransfers.avgTransfersPerCounterparty * 0.8 + Math.random() * patterns.highVolumeTransfers.avgTransfersPerCounterparty * 0.4);
+    const numTransfers = Math.floor(10 + Math.random() * 5); // Reduced: 10-15 instead of potentially 50+
     
     for (let i = 0; i < numTransfers; i++) {
-      const daysAgo = Math.floor(Math.random() * 30); // Within last 30 days
+      const daysAgo = Math.floor(Math.random() * 90); // Spread over 90 days
       const txAmount = amount(
         patterns.highVolumeTransfers.avgAmountRange.min + 
         Math.random() * (patterns.highVolumeTransfers.avgAmountRange.max - patterns.highVolumeTransfers.avgAmountRange.min)
@@ -273,12 +310,12 @@ async function generateAmlPatternTransactions(
     }
   }
 
-  // Pattern 2: Rapid in/out (smurfing-like)
-  if (patterns.rapidInOut.enabled && Math.random() > 0.5) {
-    const numDays = Math.floor(patterns.rapidInOut.avgSameDayCount * 0.8 + Math.random() * patterns.rapidInOut.avgSameDayCount * 0.4);
+  // Pattern 2: Rapid in/out (smurfing-like) - 5-8 days over 90 days
+  if (patterns.rapidInOut.enabled && patternRoll >= 0.4 && patternRoll < 0.7) {
+    const numDays = Math.floor(5 + Math.random() * 3); // Reduced: 5-8 days
     
     for (let i = 0; i < numDays; i++) {
-      const daysAgo = Math.floor(Math.random() * 30);
+      const daysAgo = Math.floor(Math.random() * 90); // Spread over 90 days
       const date = today.subtract(daysAgo, "day");
       
       // Inflow in the morning
@@ -308,38 +345,39 @@ async function generateAmlPatternTransactions(
     }
   }
 
-  // Pattern 3: Structuring (amounts just under thresholds)
-  if (patterns.structuring.enabled && Math.random() > 0.5) {
+  // Pattern 3: Structuring (amounts just under thresholds) - 3-6 transactions over 90 days
+  if (patterns.structuring.enabled && patternRoll >= 0.7 && patternRoll < 0.85) {
     const threshold = pick(patterns.structuring.commonThresholds) as number;
-    if (!threshold) return; // Safety check
-    const numStructured = Math.floor(5 + Math.random() * 10);
-    
-    for (let i = 0; i < numStructured; i++) {
-      const daysAgo = Math.floor(Math.random() * 30);
-      // Amount between 90-99% of threshold
-      const structuredAmount = amount(threshold * (0.90 + Math.random() * 0.09));
+    if (threshold) {
+      const numStructured = Math.floor(3 + Math.random() * 3); // Reduced: 3-6 instead of 5-15
       
-      transactions.push({
-        userId,
-        accountId,
-        date: today.subtract(daysAgo, "day").toDate(),
-        amount: -structuredAmount,
-        merchant: `Transfer-${Math.floor(Math.random() * 1000)}`,
-        merchantEntityId: `Entity-${Math.floor(Math.random() * 1000)}`,
-        paymentChannel: Channel.online,
-        pfcPrimary: PFCPrimary.transfer,
-        pending: false,
-      });
+      for (let i = 0; i < numStructured; i++) {
+        const daysAgo = Math.floor(Math.random() * 90); // Spread over 90 days
+        // Amount between 90-99% of threshold
+        const structuredAmount = amount(threshold * (0.90 + Math.random() * 0.09));
+        
+        transactions.push({
+          userId,
+          accountId,
+          date: today.subtract(daysAgo, "day").toDate(),
+          amount: -structuredAmount,
+          merchant: `Transfer-${Math.floor(Math.random() * 1000)}`,
+          merchantEntityId: `Entity-${Math.floor(Math.random() * 1000)}`,
+          paymentChannel: Channel.online,
+          pfcPrimary: PFCPrimary.transfer,
+          pending: false,
+        });
+      }
     }
   }
 
-  // Pattern 4: Frequent small transfers
-  if (patterns.frequentSmallTransfers.enabled && Math.random() > 0.5) {
-    const numDays = Math.floor(10 + Math.random() * 20);
+  // Pattern 4: Frequent small transfers - 5-10 days with 2-3 transfers per day over 90 days
+  if (patterns.frequentSmallTransfers.enabled && patternRoll >= 0.85) {
+    const numDays = Math.floor(5 + Math.random() * 5); // Reduced: 5-10 days
     
     for (let i = 0; i < numDays; i++) {
-      const daysAgo = Math.floor(Math.random() * 30);
-      const transfersPerDay = Math.floor(patterns.frequentSmallTransfers.avgFrequency * (0.8 + Math.random() * 0.4));
+      const daysAgo = Math.floor(Math.random() * 90); // Spread over 90 days
+      const transfersPerDay = Math.floor(2 + Math.random() * 2); // Reduced: 2-3 per day instead of potentially 10+
       
       for (let j = 0; j < transfersPerDay; j++) {
         const date = today.subtract(daysAgo, "day");
@@ -363,6 +401,7 @@ async function generateAmlPatternTransactions(
 
 /**
  * Generate basic AML patterns even without imported IBM data
+ * Reduced volume to mix naturally with normal transactions
  */
 async function generateBasicAmlPatterns(
   userId: string,
@@ -370,13 +409,16 @@ async function generateBasicAmlPatterns(
   transactions: any[],
   today: dayjs.Dayjs
 ) {
-  // Pattern 1: High-volume transfers to single counterparty (10+ transfers)
-  if (Math.random() > 0.6) {
+  // Only generate 1 pattern per user, spread over 90 days
+  const patternRoll = Math.random();
+  
+  // Pattern 1: High-volume transfers to single counterparty (10-15 transfers over 90 days)
+  if (patternRoll < 0.4) {
     const counterparty = `Entity-${Math.floor(Math.random() * 1000)}`;
-    const numTransfers = Math.floor(10 + Math.random() * 15); // 10-25 transfers
+    const numTransfers = Math.floor(10 + Math.random() * 5); // Reduced: 10-15
     
     for (let i = 0; i < numTransfers; i++) {
-      const daysAgo = Math.floor(Math.random() * 30);
+      const daysAgo = Math.floor(Math.random() * 90); // Spread over 90 days
       transactions.push({
         userId,
         accountId,
@@ -391,12 +433,12 @@ async function generateBasicAmlPatterns(
     }
   }
 
-  // Pattern 2: Rapid in/out (8+ days with same-day flows)
-  if (Math.random() > 0.6) {
-    const numDays = Math.floor(8 + Math.random() * 7); // 8-15 days
+  // Pattern 2: Rapid in/out (5-8 days with same-day flows over 90 days)
+  if (patternRoll >= 0.4 && patternRoll < 0.7) {
+    const numDays = Math.floor(5 + Math.random() * 3); // Reduced: 5-8 days
     
     for (let i = 0; i < numDays; i++) {
-      const daysAgo = Math.floor(Math.random() * 30);
+      const daysAgo = Math.floor(Math.random() * 90); // Spread over 90 days
       const date = today.subtract(daysAgo, "day");
       
       // Inflow
@@ -426,12 +468,12 @@ async function generateBasicAmlPatterns(
     }
   }
 
-  // Pattern 3: Structuring (amounts just under $10k)
-  if (Math.random() > 0.7) {
-    const numStructured = Math.floor(5 + Math.random() * 10);
+  // Pattern 3: Structuring (amounts just under $10k) - 3-6 transactions over 90 days
+  if (patternRoll >= 0.7) {
+    const numStructured = Math.floor(3 + Math.random() * 3); // Reduced: 3-6
     
     for (let i = 0; i < numStructured; i++) {
-      const daysAgo = Math.floor(Math.random() * 30);
+      const daysAgo = Math.floor(Math.random() * 90); // Spread over 90 days
       const structuredAmount = amount(9000 + Math.random() * 900); // $9000-$9900
       
       transactions.push({
