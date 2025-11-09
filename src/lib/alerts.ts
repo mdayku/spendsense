@@ -11,11 +11,20 @@ export function amlEducationalAlerts(tx: Transaction[], windowDays: number) {
   const recent = tx.filter(t => dayjs(t.date).isAfter(since));
 
   // Many transfers to few counterparties
-  const transfers = recent.filter(t => t.pfcPrimary === "transfer" && t.amount < 0);
+  // Exclude legitimate transfers like "Savings Transfer" - only flag suspicious patterns
+  const transfers = recent.filter(t => 
+    t.pfcPrimary === "transfer" && 
+    t.amount < 0 &&
+    t.merchant !== "Savings Transfer" && // Exclude legitimate savings transfers
+    !t.merchant?.toLowerCase().includes("savings") // Exclude any savings-related transfers
+  );
   const byCounterparty: Record<string, number> = {};
   for (const t of transfers) {
     const k = t.merchantEntityId || t.merchant || "unknown";
-    byCounterparty[k] = (byCounterparty[k] || 0) + 1;
+    // Skip generic/unknown counterparties - only flag specific entities
+    if (k !== "unknown" && !k.toLowerCase().includes("transfer")) {
+      byCounterparty[k] = (byCounterparty[k] || 0) + 1;
+    }
   }
   const top = Object.entries(byCounterparty).sort((a,b)=>b[1]-a[1])[0];
   if (top && top[1] >= 10) alerts.push(`High volume of transfers (${top[1]}) to a single counterparty in ${windowDays}d.`);

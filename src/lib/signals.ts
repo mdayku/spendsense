@@ -16,8 +16,11 @@ export async function computeSignals(userId: string, windowDays: 30 | 180) {
   // Count subscriptions in two ways:
   // 1. Pattern-based: recurring transactions to same merchant (strict)
   // 2. Category-based: transactions explicitly marked as "subscription"
+  // Exclude "transfer" category from pattern detection (transfers aren't subscriptions)
   const byMerchant = new Map<string, Date[]>();
   for (const t of expenses) {
+    // Skip transfer category transactions - they're not subscriptions
+    if (t.pfcPrimary === "transfer") continue;
     const key = t.merchant || t.merchantEntityId || "unknown";
     if (!byMerchant.has(key)) byMerchant.set(key, []);
     byMerchant.get(key)!.push(t.date);
@@ -33,9 +36,35 @@ export async function computeSignals(userId: string, windowDays: 30 | 180) {
     if (sorted.length >= 3 && (avgGap > 20 && avgGap < 40 || avgGap > 6 && avgGap < 9)) {
       recurringCount++;
       patternBasedMerchants.add(m);
-      const spend = expenses.filter((t: { merchant?: string; merchantEntityId?: string }) => (t.merchant||t.merchantEntityId||"unknown")===m)
-                            .reduce((s: number, t: { amount: number }) => s + Math.abs(t.amount), 0);
-      monthlyRecurringUSD += spend / Math.max(1, windowDays/30);
+      
+      // Get all transactions for this merchant that match the pattern dates
+      // Only include non-transfer transactions
+      const patternDates = new Set(sorted.map((d: Date) => dayjs(d).format("YYYY-MM-DD")));
+      const patternTransactions = expenses.filter((t: { merchant?: string; merchantEntityId?: string; pfcPrimary?: string; date: Date }) => {
+        const key = t.merchant || t.merchantEntityId || "unknown";
+        return key === m && 
+               t.pfcPrimary !== "transfer" &&
+               patternDates.has(dayjs(t.date).format("YYYY-MM-DD"));
+      });
+      
+      // Calculate average amount per occurrence (handle multiple transactions per date)
+      const totalSpend = patternTransactions.reduce((s: number, t: { amount: number }) => s + Math.abs(t.amount), 0);
+      const numOccurrences = patternDates.size; // Number of unique dates in pattern
+      const avgAmountPerOccurrence = numOccurrences > 0 ? totalSpend / numOccurrences : 0;
+      
+      // Calculate monthly recurring based on pattern frequency
+      // Monthly pattern (avgGap ~30 days): ~1 occurrence per month
+      // Weekly pattern (avgGap ~7 days): ~4 occurrences per month
+      let monthlyAmount = 0;
+      if (avgGap > 20 && avgGap < 40) {
+        // Monthly subscription
+        monthlyAmount = avgAmountPerOccurrence;
+      } else if (avgGap > 6 && avgGap < 9) {
+        // Weekly subscription
+        monthlyAmount = avgAmountPerOccurrence * 4;
+      }
+      
+      monthlyRecurringUSD += monthlyAmount;
     }
   }
   
