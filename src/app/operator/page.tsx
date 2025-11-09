@@ -147,7 +147,7 @@ export default function Operator() {
                       <div className="flex items-center gap-2">
                         <div className="font-medium text-slate-900">{user.name}</div>
                         {user.amlSeverity === "red" && (
-                          <span className="text-red-600 text-lg" title={user.amlWarning || "AML/Fraud alert">
+                          <span className="text-red-600 text-lg" title={user.amlWarning || "AML/Fraud alert"}>
                             🔴
                           </span>
                         )}
