@@ -1,10 +1,8 @@
-import { PrismaClient } from "@prisma/client";
+import { prisma } from "../src/lib/zz_prisma";
 import { generateSingleUserData } from "../src/lib/generateSingleUser";
 import { computeSignals } from "../src/lib/signals";
 import { assignPersona, shape } from "../src/lib/personas";
 import { amlEducationalAlerts } from "../src/lib/alerts";
-
-const prisma = new PrismaClient();
 
 async function main() {
   console.log("Fetching all users...");
@@ -24,14 +22,28 @@ async function main() {
   console.log(`\n${usersWithAml.length} users will include AML patterns`);
   console.log(`${usersWithoutAml.length} users will have standard synthetic data`);
 
-  // Delete existing data for all users
+  // Delete existing data for all users (order matters due to foreign keys)
+  // Use bulk deletes for better performance
   console.log("\nDeleting existing transactions and profiles...");
-  for (const user of users) {
-    await prisma.transaction.deleteMany({ where: { userId: user.id } });
-    await prisma.profile.deleteMany({ where: { userId: user.id } });
-    await prisma.amlLabel.deleteMany({ where: { userId: user.id } });
-    await prisma.amlEducationalAlert.deleteMany({ where: { userId: user.id } });
-    await prisma.pendingAmlReview.deleteMany({ where: { userId: user.id } });
+  const userIds = users.map((u) => u.id);
+  
+  try {
+    console.log("  Deleting review items...");
+    await prisma.reviewItem.deleteMany({ where: { userId: { in: userIds } } });
+    
+    console.log("  Deleting profiles...");
+    await prisma.profile.deleteMany({ where: { userId: { in: userIds } } });
+    
+    console.log("  Deleting transactions...");
+    await prisma.transaction.deleteMany({ where: { userId: { in: userIds } } });
+    
+    console.log("  Deleting AML labels...");
+    await prisma.amlLabel.deleteMany({ where: { userId: { in: userIds } } });
+    
+    console.log("  ✅ Deletion complete");
+  } catch (error: any) {
+    console.error(`  ❌ Error during bulk deletion: ${error.message}`);
+    throw error;
   }
 
   // Helper function to compute profiles for a user
