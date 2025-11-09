@@ -24,8 +24,35 @@ export default function ProfileView({ params }: { params: { userId: string } }) 
   const [alerts, setAlerts] = React.useState<{alerts30:string[];alerts180:string[]}>({alerts30:[],alerts180:[]});
   const [labels, setLabels] = React.useState<number>(0);
   const [chartData, setChartData] = React.useState<any>(null);
+  const [userZipCode, setUserZipCode] = React.useState<string>("");
 
   const [refreshing, setRefreshing] = React.useState(false);
+
+  // Try to detect user's zip code via geolocation
+  React.useEffect(() => {
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        async (position) => {
+          try {
+            // Reverse geocode to get zip code
+            const response = await fetch(
+              `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${position.coords.latitude}&longitude=${position.coords.longitude}&localityLanguage=en`
+            );
+            const data = await response.json();
+            if (data.postcode) {
+              setUserZipCode(data.postcode);
+            }
+          } catch (err) {
+            console.log("Could not get zip code from location:", err);
+          }
+        },
+        () => {
+          // User denied geolocation or error occurred
+          console.log("Geolocation not available");
+        }
+      );
+    }
+  }, []);
   
   const loadData = React.useCallback(async () => {
     try {
@@ -134,11 +161,45 @@ export default function ProfileView({ params }: { params: { userId: string } }) 
               <div className="font-bold text-amber-900 mb-1">Educational AML Alert</div>
               <div className="text-sm text-amber-800">
                 Potential AML-like patterns detected in transaction history:
-                <ul className="list-disc ml-5 mt-2 space-y-1">
-                  <li><b>30-day window:</b> {alerts.alerts30.length} alert{alerts.alerts30.length !== 1 ? 's' : ''}</li>
-                  <li><b>180-day window:</b> {alerts.alerts180.length} alert{alerts.alerts180.length !== 1 ? 's' : ''}</li>
-                </ul>
-                <div className="mt-2 text-xs italic">This is not a determination of wrongdoing, nor legal or financial advice.</div>
+                {alerts.alerts30.length > 0 && (
+                  <div className="mt-2">
+                    <b>30-day window:</b>
+                    <ul className="list-disc ml-5 mt-1 space-y-1">
+                      {alerts.alerts30.map((alert: string, idx: number) => (
+                        <li key={idx}>{alert}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+                {alerts.alerts180.length > 0 && (
+                  <div className="mt-2">
+                    <b>180-day window:</b>
+                    <ul className="list-disc ml-5 mt-1 space-y-1">
+                      {alerts.alerts180.map((alert: string, idx: number) => (
+                        <li key={idx}>{alert}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+                <div className="mt-3 text-xs italic">This is not a determination of wrongdoing, nor legal or financial advice.</div>
+                <div className="mt-3 flex gap-2">
+                  <a
+                    href="https://www.fbi.gov"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="px-3 py-1.5 text-xs font-medium bg-red-600 text-white rounded hover:bg-red-700 transition-colors"
+                  >
+                    🚨 Turn Self In
+                  </a>
+                  <a
+                    href={`https://www.google.com/search?q=money+laundering+lawyer${userZipCode ? `+${userZipCode}` : ''}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="px-3 py-1.5 text-xs font-medium bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
+                  >
+                    ⚖️ Find a Lawyer
+                  </a>
+                </div>
               </div>
             </div>
           </div>
