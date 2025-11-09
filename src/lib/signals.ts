@@ -2,6 +2,30 @@ import { prisma } from "@/lib/zz_prisma";
 import { THRESHOLDS } from "@/lib/rules";
 import dayjs from "dayjs";
 
+/**
+ * Check if a transaction is an AML-like transfer (suspicious pattern)
+ * These should be excluded from expense calculations for metrics
+ */
+function isAmlLikeTransfer(t: { pfcPrimary?: string; merchant?: string | null; merchantEntityId?: string | null }): boolean {
+  if (t.pfcPrimary !== "transfer") return false;
+  
+  const merchant = (t.merchant || "").toLowerCase();
+  const entityId = (t.merchantEntityId || "").toLowerCase();
+  
+  // AML patterns typically have:
+  // - "Transfer-" prefix with numbers
+  // - "Entity-" prefix with numbers
+  // - "Incoming Transfer" (though these are usually positive)
+  // - Generic transfer patterns
+  return (
+    merchant.startsWith("transfer-") ||
+    merchant.startsWith("entity-") ||
+    merchant === "incoming transfer" ||
+    entityId.startsWith("entity-") ||
+    entityId.startsWith("transfer-")
+  );
+}
+
 export async function computeSignals(userId: string, windowDays: 30 | 180) {
   const since = dayjs().subtract(windowDays, "day").toDate();
   const [tx, accts, liabs] = await Promise.all([
@@ -10,7 +34,11 @@ export async function computeSignals(userId: string, windowDays: 30 | 180) {
     prisma.liability.findMany({ where: { userId } }),
   ]);
 
-  const expenses = tx.filter((t: { amount: number }) => t.amount < 0);
+  // Filter expenses, excluding AML-like transfers from expense calculations
+  // (AML transfers are legitimate transactions but shouldn't inflate spending metrics)
+  const expenses = tx.filter((t: { amount: number; pfcPrimary?: string; merchant?: string | null; merchantEntityId?: string | null }) => 
+    t.amount < 0 && !isAmlLikeTransfer(t)
+  );
   const totalSpend = Math.abs(expenses.reduce((s: number, t: { amount: number }) => s + t.amount, 0));
 
   // Count subscriptions in two ways:
@@ -39,31 +67,37 @@ export async function computeSignals(userId: string, windowDays: 30 | 180) {
     }
   }
   
-  // Also count transactions explicitly categorized as "subscription" that weren't already counted
-  const subscriptionTx = expenses.filter((t: { pfcPrimary?: string; merchant?: string; merchantEntityId?: string }) => {
-    if (t.pfcPrimary === "subscription") {
-      const key = t.merchant || t.merchantEntityId || "unknown";
-      // Only count if not already counted via pattern detection
-      return !patternBasedMerchants.has(key);
-    }
-    return false;
-  });
+  // Also count transactions explicitly categorized as "subscription"
+  // Count ALL subscription transactions, not just ones not already counted
+  // (pattern-based might have missed some, or category is more accurate)
+  const allSubscriptionTx = expenses.filter((t: { pfcPrimary?: string }) => t.pfcPrimary === "subscription");
   
   // Count unique subscription merchants (category-based)
   const categoryBasedMerchants = new Set<string>();
-  subscriptionTx.forEach((t: { merchant?: string; merchantEntityId?: string }) => {
+  allSubscriptionTx.forEach((t: { merchant?: string; merchantEntityId?: string }) => {
     const key = t.merchant || t.merchantEntityId || "unknown";
-    categoryBasedMerchants.add(key);
+    // Only add merchants that weren't already counted via pattern detection
+    if (!patternBasedMerchants.has(key)) {
+      categoryBasedMerchants.add(key);
+    }
   });
   
-  // Add category-based subscriptions to count
+  // Add category-based subscriptions to count (only new ones)
   recurringCount += categoryBasedMerchants.size;
   
-  // Add category-based subscription spending
-  const categoryBasedSpending = subscriptionTx.reduce((s: number, t: { amount: number }) => s + Math.abs(t.amount), 0);
+  // For spending calculation, use ALL subscription transactions to get accurate share
+  // But avoid double-counting: if merchant was pattern-detected, use pattern amount; otherwise use category amount
+  const categoryBasedSpending = allSubscriptionTx
+    .filter((t: { merchant?: string; merchantEntityId?: string }) => {
+      const key = t.merchant || t.merchantEntityId || "unknown";
+      return !patternBasedMerchants.has(key); // Only count if not already counted via pattern
+    })
+    .reduce((s: number, t: { amount: number }) => s + Math.abs(t.amount), 0);
   monthlyRecurringUSD += categoryBasedSpending / Math.max(1, windowDays/30);
   
-  const subscriptionShare = totalSpend ? monthlyRecurringUSD / (totalSpend / Math.max(1, windowDays/30)) : 0;
+  // Calculate subscription share: monthly recurring / monthly total spend
+  const monthlyTotalSpend = totalSpend / Math.max(1, windowDays/30);
+  const subscriptionShare = monthlyTotalSpend > 0 ? monthlyRecurringUSD / monthlyTotalSpend : 0;
 
   const savingsAcctIds = accts.filter((a: { type: string }) => ["savings","money_market","hsa"].includes(a.type))
                               .map((a: { id: string }) => a.id);
@@ -78,7 +112,15 @@ export async function computeSignals(userId: string, windowDays: 30 | 180) {
   const savingsBalance = (await prisma.account.findMany({ where: { id: { in: savingsAcctIds }}}))
       .reduce((s: number, a: { balanceCurrent?: number }) => s + (a.balanceCurrent || 0), 0);
   const avgMonthlyExpenses = totalSpend / Math.max(1, windowDays/30);
-  const emergencyMonths = avgMonthlyExpenses ? savingsBalance / avgMonthlyExpenses : 0;
+  const emergencyMonths = avgMonthlyExpenses > 0 ? savingsBalance / avgMonthlyExpenses : 0;
+  
+  // Cash Flow Buffer includes checking accounts too (cash + savings)
+  const checkingAcctIds = accts.filter((a: { type: string }) => a.type === "checking")
+                                .map((a: { id: string }) => a.id);
+  const checkingBalance = (await prisma.account.findMany({ where: { id: { in: checkingAcctIds }}}))
+      .reduce((s: number, a: { balanceCurrent?: number }) => s + (a.balanceCurrent || 0), 0);
+  const totalCashAndSavings = savingsBalance + checkingBalance;
+  const cashBufferMonths = avgMonthlyExpenses > 0 ? totalCashAndSavings / avgMonthlyExpenses : 0;
 
   const creditAccts = accts.filter((a: { type: string }) => a.type === "credit");
   const utils = creditAccts.map((a: { balanceCurrent?: number; creditLimit?: number }) => (a.balanceCurrent||0) / Math.max(1, a.creditLimit||0));
@@ -94,7 +136,6 @@ export async function computeSignals(userId: string, windowDays: 30 | 180) {
   const incomes = tx.filter((t: { amount: number; pfcPrimary?: string }) => t.amount > 0 && t.pfcPrimary === "income").map((t: { date: Date }) => t.date).sort((a: Date, b: Date) => a.getTime()-b.getTime());
   const incomeGaps = incomes.slice(1).map((d: Date, i: number) => (d.getTime()-incomes[i].getTime())/(1000*3600*24));
   const incomeMedianGap = incomeGaps.length ? incomeGaps.sort((a: number, b: number) => a-b)[Math.floor(incomeGaps.length/2)] : 999;
-  const cashBufferMonths = emergencyMonths;
 
   return {
     subscriptionCount: recurringCount,
