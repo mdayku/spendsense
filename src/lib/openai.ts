@@ -93,18 +93,27 @@ export async function generateRecommendationCopy(
 }
 
 function buildPrompt(type: string, ctx: RecommendationContext): string {
-  // If user has AML alerts, provide cautious generic recommendations
+  // If user has AML alerts, provide cautious guidance
   if (ctx.hasAmlAlerts) {
-    return `Generate a general financial education recommendation for the following type: ${type}
+    return `Generate a cautious financial recommendation for someone whose transaction patterns have been flagged for review.
 
-IMPORTANT CONTEXT: This user's transaction history contains unusual patterns flagged for educational review. 
-Provide GENERIC educational content only. Do NOT give specific advice about their spending or financial situation.
-Focus on general financial literacy topics appropriate to the recommendation type.
+IMPORTANT CONTEXT: This user's transaction history contains unusual patterns that may be flagged by financial institutions or authorities as potentially suspicious. Your recommendations should focus on transparency, record-keeping, and professional guidance.
+
+Recommendation Type: ${type}
+
+Generate recommendations that emphasize:
+- Importance of maintaining clear records and documentation
+- Consulting with legal or financial professionals
+- Understanding reporting requirements and compliance
+- Being transparent with financial institutions
+- Reviewing and potentially adjusting transaction patterns
+
+Tone should be educational and cautionary, not accusatory. Acknowledge this is a sensitive situation.
 
 Return ONLY a JSON object with this exact structure:
 {
-  "title": "General educational title under 60 characters",
-  "rationale": "Generic financial education content. This is educational only, not advice. Consult a licensed advisor."
+  "title": "Cautious, professional title under 60 characters",
+  "rationale": "Professional guidance focused on transparency and seeking expert help. This is educational only. Consult licensed legal and financial advisors."
 }`;
   }
 
