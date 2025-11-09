@@ -310,7 +310,8 @@ async function generateAmlPatternTransactions(
 
   // Pattern 3: Structuring (amounts just under thresholds)
   if (patterns.structuring.enabled && Math.random() > 0.5) {
-    const threshold = pick(patterns.structuring.commonThresholds);
+    const threshold = pick(patterns.structuring.commonThresholds) as number;
+    if (!threshold) return; // Safety check
     const numStructured = Math.floor(5 + Math.random() * 10);
     
     for (let i = 0; i < numStructured; i++) {

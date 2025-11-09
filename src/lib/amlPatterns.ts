@@ -184,7 +184,7 @@ export async function analyzeAmlPatterns() {
       patterns.frequentSmallTransfers.avgFrequency = 
         dailyFrequencies.reduce((a, b) => a + b, 0) / dailyFrequencies.length;
       patterns.frequentSmallTransfers.avgAmount = 
-        smallTransfers.reduce((sum, t) => sum + Math.abs(t.amount), 0) / smallTransfers.length;
+        smallTransfers.reduce((sum: number, t: { amount: number }) => sum + Math.abs(t.amount), 0) / smallTransfers.length;
     }
   }
 

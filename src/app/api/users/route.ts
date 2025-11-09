@@ -12,7 +12,7 @@ export async function GET(req: NextRequest) {
   });
 
   // Add AML alert information for each user
-  const usersWithAlerts = await Promise.all(users.map(async (user) => {
+  const usersWithAlerts = await Promise.all(users.map(async (user: { id: string; name: string | null; email: string; createdAt: Date }) => {
     // Check for AML labels (from imported datasets)
     const amlLabels = await prisma.amlLabel.count({
       where: { userId: user.id, label: true }

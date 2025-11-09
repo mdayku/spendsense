@@ -25,7 +25,7 @@ async function main() {
   // Delete existing data for all users (order matters due to foreign keys)
   // Use bulk deletes for better performance
   console.log("\nDeleting existing transactions and profiles...");
-  const userIds = users.map((u) => u.id);
+  const userIds = users.map((u: { id: string }) => u.id);
   
   try {
     console.log("  Deleting review items...");
