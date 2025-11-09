@@ -5,7 +5,7 @@ import { generateRecommendationCopy, type RecommendationContext } from "@/lib/op
 export async function recommendationsFor(
   persona: string, 
   s: any, 
-  ctx: { last4: string; aprMonthlyUSD?: number },
+  ctx: { last4: string; aprMonthlyUSD?: number; hasAmlAlerts?: boolean },
   useAI: boolean = false
 ): Promise<RecommendationItem[]> {
   const because = (msg: string) => `${msg}. ${standardDisclosure}`;
@@ -28,6 +28,7 @@ export async function recommendationsFor(
     incomeMedianGap: s.incomeMedianGap || 0,
     cashBufferMonths: s.cashBufferMonths || 0,
     last4: ctx.last4,
+    hasAmlAlerts: ctx.hasAmlAlerts || false,
   };
   // Helper function to create recommendation with optional AI copy
   const createRecommendation = async (

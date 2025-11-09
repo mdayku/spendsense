@@ -29,6 +29,7 @@ export interface RecommendationContext {
   incomeMedianGap: number;
   cashBufferMonths: number;
   last4?: string;
+  hasAmlAlerts?: boolean; // Flag if user has AML educational alerts
 }
 
 export async function generateRecommendationCopy(
@@ -92,6 +93,21 @@ export async function generateRecommendationCopy(
 }
 
 function buildPrompt(type: string, ctx: RecommendationContext): string {
+  // If user has AML alerts, provide cautious generic recommendations
+  if (ctx.hasAmlAlerts) {
+    return `Generate a general financial education recommendation for the following type: ${type}
+
+IMPORTANT CONTEXT: This user's transaction history contains unusual patterns flagged for educational review. 
+Provide GENERIC educational content only. Do NOT give specific advice about their spending or financial situation.
+Focus on general financial literacy topics appropriate to the recommendation type.
+
+Return ONLY a JSON object with this exact structure:
+{
+  "title": "General educational title under 60 characters",
+  "rationale": "Generic financial education content. This is educational only, not advice. Consult a licensed advisor."
+}`;
+  }
+
   let specificContext = "";
 
   switch (type) {

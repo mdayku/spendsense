@@ -291,10 +291,8 @@ async function generateAmlPatternTransactions(
     
     for (let i = 0; i < numTransfers; i++) {
       const daysAgo = Math.floor(Math.random() * 90); // Spread over 90 days
-      const txAmount = amount(
-        patterns.highVolumeTransfers.avgAmountRange.min + 
-        Math.random() * (patterns.highVolumeTransfers.avgAmountRange.max - patterns.highVolumeTransfers.avgAmountRange.min)
-      );
+      // Small-time activity: $200-$800 transfers
+      const txAmount = amount(200 + Math.random() * 600); // $200-$800 range
       
       transactions.push({
         userId,
@@ -318,12 +316,16 @@ async function generateAmlPatternTransactions(
       const daysAgo = Math.floor(Math.random() * 90); // Spread over 90 days
       const date = today.subtract(daysAgo, "day");
       
+      // Small-time in/out: $400-$1200
+      const inflowAmount = amount(400 + Math.random() * 800);
+      const outflowAmount = amount(inflowAmount * (0.85 + Math.random() * 0.15)); // 85-100% of inflow
+      
       // Inflow in the morning
       transactions.push({
         userId,
         accountId,
         date: date.hour(10).minute(Math.floor(Math.random() * 60)).toDate(),
-        amount: amount(patterns.rapidInOut.avgInflowAmount * (0.8 + Math.random() * 0.4)),
+        amount: inflowAmount,
         merchant: "Incoming Transfer",
         paymentChannel: Channel.online,
         pfcPrimary: PFCPrimary.transfer,
@@ -335,7 +337,7 @@ async function generateAmlPatternTransactions(
         userId,
         accountId,
         date: date.hour(14 + Math.floor(Math.random() * 6)).minute(Math.floor(Math.random() * 60)).toDate(),
-        amount: -amount(patterns.rapidInOut.avgOutflowAmount * (0.8 + Math.random() * 0.4)),
+        amount: -outflowAmount,
         merchant: `Transfer-${Math.floor(Math.random() * 1000)}`,
         merchantEntityId: `Entity-${Math.floor(Math.random() * 1000)}`,
         paymentChannel: Channel.online,
@@ -353,8 +355,9 @@ async function generateAmlPatternTransactions(
       
       for (let i = 0; i < numStructured; i++) {
         const daysAgo = Math.floor(Math.random() * 90); // Spread over 90 days
-        // Amount between 90-99% of threshold
-        const structuredAmount = amount(threshold * (0.90 + Math.random() * 0.09));
+        // Small-time structuring: staying under smaller thresholds
+        // Amounts between $700-$1900 (avoiding round $2k/$3k that might trigger internal reviews)
+        const structuredAmount = amount(700 + Math.random() * 1200);
         
         transactions.push({
           userId,
@@ -381,7 +384,8 @@ async function generateAmlPatternTransactions(
       
       for (let j = 0; j < transfersPerDay; j++) {
         const date = today.subtract(daysAgo, "day");
-        const txAmount = amount(patterns.frequentSmallTransfers.avgAmount * (0.7 + Math.random() * 0.6));
+        // Small frequent transfers: $50-$400
+        const txAmount = amount(50 + Math.random() * 350);
         
         transactions.push({
           userId,

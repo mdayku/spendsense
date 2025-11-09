@@ -30,16 +30,36 @@ export function amlEducationalAlerts(tx: Transaction[], windowDays: number) {
   if (top && top[1] >= 10) alerts.push(`High volume of transfers (${top[1]}) to a single counterparty in ${windowDays}d.`);
 
   // Rapid in/out (smurfing-like), same-day inflow then outflow
+  // Normal behavior: getting paid and spending on same day occasionally
+  // Suspicious: frequent large in/out flows suggesting money laundering passthrough
   const inflowsByDay = new Map<string, number>();
   const outflowsByDay = new Map<string, number>();
   for (const t of recent) {
     const d = dayjs(t.date).format("YYYY-MM-DD");
-    if (t.amount > 0) inflowsByDay.set(d, (inflowsByDay.get(d)||0) + t.amount);
-    if (t.amount < 0) outflowsByDay.set(d, (outflowsByDay.get(d)||0) + Math.abs(t.amount));
+    // Only count substantial amounts (not small purchases on payday)
+    if (t.amount > 0 && t.amount > 500) inflowsByDay.set(d, (inflowsByDay.get(d)||0) + t.amount);
+    if (t.amount < 0 && Math.abs(t.amount) > 500) outflowsByDay.set(d, (outflowsByDay.get(d)||0) + Math.abs(t.amount));
   }
   let sameDayCount = 0;
-  inflowsByDay.forEach((v,d)=>{ if ((outflowsByDay.get(d)||0) > 0) sameDayCount++; });
-  if (sameDayCount >= 8) alerts.push(`${sameDayCount} days with same‑day in/out flows.`);
+  let suspiciousDays = 0;
+  inflowsByDay.forEach((inflow, d) => {
+    const outflow = outflowsByDay.get(d) || 0;
+    if (outflow > 0) {
+      sameDayCount++;
+      // Extra suspicious if amounts are similar (within 20% - suggests passthrough)
+      if (Math.abs(inflow - outflow) / inflow < 0.2) {
+        suspiciousDays++;
+      }
+    }
+  });
+  
+  // Adjust threshold based on window size
+  // 30-day: need 10+ days (33% of window) with significant in/out
+  // 180-day: need 25+ days (14% of window) with significant in/out
+  const threshold = windowDays === 30 ? 10 : 25;
+  if (sameDayCount >= threshold) {
+    alerts.push(`${sameDayCount} days with same‑day in/out flows of substantial amounts.`);
+  }
 
   return alerts;
 }
